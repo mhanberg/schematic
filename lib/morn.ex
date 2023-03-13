@@ -106,25 +106,54 @@ defmodule Morn do
 
           Enum.reduce_while(bp_keys, {:ok, fn -> input end}, fn bpk, {:ok, absorber_acc} ->
             schematic = blueprint[bpk]
+            {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
             if schematic do
-              case permeate(schematic, input[bpk]) do
+              case permeate(schematic, input[from_key]) do
                 {:ok, absorber} ->
                   absorber = fn ->
-                    Map.put(absorber_acc.(), bpk, absorber.())
+                    absorber_acc.()
+                    |> Map.delete(from_key)
+                    |> Map.put(to_key, absorber.())
                   end
 
                   {:cont, {:ok, absorber}}
 
                 {:error, error} ->
-                  {:halt, {:error, "#{error} for key #{inspect(bpk, pretty: true)} in #{inspect(input, pretty: true)}"}}
+                  {:halt,
+                   {:error,
+                    "#{error} for key #{inspect(from_key, pretty: true)} in #{inspect(input, pretty: true)}"}}
               end
             else
-              {:halt, {:error, "#{inspect(input, pretty: true)} is missing a #{inspect(bpk, pretty: true)} key"}}
+              {:halt,
+               {:error,
+                "#{inspect(input, pretty: true)} is missing a #{inspect(bpk, pretty: true)} key"}}
             end
           end)
         else
           {:error, "#{inspect(input, pretty: true)} is not a map"}
+        end
+      end
+    }
+  end
+
+  def schema(mod, schematic) do
+    schematic =
+      Map.new(schematic, fn
+        {k, v} when is_atom(k) ->
+          {{to_string(k), k}, v}
+
+        kv ->
+          kv
+      end)
+
+    %Schematic{
+      kind: "map",
+      permeate: fn input ->
+        with {:ok, absorber} <- permeate(map(schematic), input) do
+          a1 = absorber.()
+          dbg()
+          {:ok, fn -> struct(mod, a1) end}
         end
       end
     }
@@ -150,6 +179,7 @@ defmodule Morn do
   end
 
   def permeate(schematic, input) do
+    dbg()
     schematic.permeate.(input)
   end
 

@@ -1,6 +1,6 @@
 # morn
 
-I'll think of a backronym soon.
+[m]itch's [o]pinionated [n]orm
 
 ## Installation
 

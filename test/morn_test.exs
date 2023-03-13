@@ -105,7 +105,7 @@ defmodule MornTest do
       assert input == absorber.()
 
       input = []
-      assert {:error, ~s|[] is not one of: integer, string|} = permeate(schematic, input)
+      assert {:error, ~s|[] is not one of: [integer, string]|} = permeate(schematic, input)
     end
 
     test "map/1" do
@@ -173,20 +173,206 @@ defmodule MornTest do
         }
       }
 
-      expected_error = ~s"""
-      %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
-        "alice" => "Alice",
-        "bob" => ["is", "the", "coolest"],
-        "carol" => %{"baz" => %{"three" => "the third"}}
-      } for key "bar" in %{
-        "bar" => %{
+      expected_error =
+        ~s"""
+        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
           "alice" => "Alice",
           "bob" => ["is", "the", "coolest"],
           "carol" => %{"baz" => %{"three" => "the third"}}
-        },
-        "foo" => "hi there!"
+        } for key "bar" in %{
+          "bar" => %{
+            "alice" => "Alice",
+            "bob" => ["is", "the", "coolest"],
+            "carol" => %{"baz" => %{"three" => "the third"}}
+          },
+          "foo" => "hi there!"
+        }
+        """
+        |> String.trim()
+
+      assert {:error, actual_error} = permeate(schematic, input)
+
+      assert actual_error == expected_error
+    end
+
+    test "complex transformer" do
+      schematic =
+        struct(%{
+          {"foo", :foo} => oneof([str(), int()]),
+          {"bar", :bar} =>
+            map(%{
+              {"alice", :alice} => str("Alice"),
+              {"bob", :bob} => list(str()),
+              {"carol", :carol} =>
+                map(%{
+                  {"baz", :baz} =>
+                    oneof([
+                      map(%{{"one", :one} => int()}),
+                      map(%{{"two", :two} => str()})
+                    ])
+                })
+            })
+        })
+
+      input = %{
+        "foo" => "hi there!",
+        "bar" => %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{
+            "baz" => %{
+              "two" => "the second"
+            }
+          }
+        }
       }
-      """ |> String.trim()
+
+      assert {:ok, absorber} = permeate(schematic, input)
+
+      assert %{
+               foo: "hi there!",
+               bar: %{
+                 alice: "Alice",
+                 bob: ["is", "the", "coolest"],
+                 carol: %{
+                   baz: %{
+                     two: "the second"
+                   }
+                 }
+               }
+             } == absorber.()
+
+      input = %{
+        "foo" => "hi there!",
+        "bar" => %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{
+            "baz" => %{
+              "three" => "the third"
+            }
+          }
+        }
+      }
+
+      expected_error =
+        ~s"""
+        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{"baz" => %{"three" => "the third"}}
+        } for key "bar" in %{
+          "bar" => %{
+            "alice" => "Alice",
+            "bob" => ["is", "the", "coolest"],
+            "carol" => %{"baz" => %{"three" => "the third"}}
+          },
+          "foo" => "hi there!"
+        }
+        """
+        |> String.trim()
+
+      assert {:error, actual_error} = permeate(schematic, input)
+
+      assert actual_error == expected_error
+    end
+
+    defmodule S1 do
+      defstruct [:foo, :bar]
+    end
+
+    defmodule S2 do
+      defstruct [:alice, :bob, :carol]
+    end
+
+    defmodule S3 do
+      defstruct [:baz]
+    end
+
+    defmodule S4 do
+      defstruct [:one]
+    end
+
+    defmodule S5 do
+      defstruct [:two]
+    end
+
+    test "complex transformer with structs" do
+      schematic =
+        schema(S1, %{
+          {"foo", :foo} => oneof([str(), int()]),
+          bar:
+            schema(S2, %{
+              {"alice", :alice} => str("Alice"),
+              {"bob", :bob} => list(str()),
+              {"carol", :carol} =>
+                schema(S3, %{
+                  {"baz", :baz} =>
+                    oneof([
+                      schema(S4, %{one: int()}),
+                      schema(S5, %{two: str()})
+                    ])
+                })
+            })
+        })
+
+      input = %{
+        "foo" => "hi there!",
+        "bar" => %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{
+            "baz" => %{
+              "two" => "the second"
+            }
+          }
+        }
+      }
+
+      assert {:ok, absorber} = permeate(schematic, input)
+
+      assert %S1{
+               foo: "hi there!",
+               bar: %S2{
+                 alice: "Alice",
+                 bob: ["is", "the", "coolest"],
+                 carol: %S3{
+                   baz: %S5{
+                     two: "the second"
+                   }
+                 }
+               }
+             } == absorber.()
+
+      input = %{
+        "foo" => "hi there!",
+        "bar" => %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{
+            "baz" => %{
+              "three" => "the third"
+            }
+          }
+        }
+      }
+
+      expected_error =
+        ~s"""
+        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
+          "alice" => "Alice",
+          "bob" => ["is", "the", "coolest"],
+          "carol" => %{"baz" => %{"three" => "the third"}}
+        } for key "bar" in %{
+          "bar" => %{
+            "alice" => "Alice",
+            "bob" => ["is", "the", "coolest"],
+            "carol" => %{"baz" => %{"three" => "the third"}}
+          },
+          "foo" => "hi there!"
+        }
+        """
+        |> String.trim()
 
       assert {:error, actual_error} = permeate(schematic, input)
 
