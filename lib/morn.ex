@@ -1,12 +1,12 @@
 defmodule Morn do
   defmodule Schematic do
-    defstruct [:permeate, :absorb, :kind]
+    defstruct [:assimilate, :kind]
   end
 
   def null() do
     %Schematic{
       kind: :null,
-      permeate: fn
+      assimilate: fn
         nil ->
           {:ok, nil}
 
@@ -19,7 +19,7 @@ defmodule Morn do
   def str(literal \\ nil) do
     %Schematic{
       kind: "string",
-      permeate: fn input ->
+      assimilate: fn input ->
         # FIXME: this is ugly
         cond do
           is_binary(literal) ->
@@ -42,7 +42,7 @@ defmodule Morn do
   def int(literal \\ nil) do
     %Schematic{
       kind: "integer",
-      permeate: fn input ->
+      assimilate: fn input ->
         # FIXME: this is ugly
         cond do
           is_integer(literal) ->
@@ -65,7 +65,7 @@ defmodule Morn do
   def list() do
     %Schematic{
       kind: "list",
-      permeate: fn input ->
+      assimilate: fn input ->
         if is_list(input) do
           {:ok, input}
         else
@@ -78,10 +78,10 @@ defmodule Morn do
   def list(schematic) do
     %Schematic{
       kind: "list",
-      permeate: fn input ->
+      assimilate: fn input ->
         if is_list(input) do
           Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
-            case permeate(schematic, el) do
+            case assimilate(schematic, el) do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
@@ -108,7 +108,7 @@ defmodule Morn do
   def map(blueprint \\ %{}) do
     %Schematic{
       kind: "map",
-      permeate: fn input ->
+      assimilate: fn input ->
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
 
@@ -118,7 +118,7 @@ defmodule Morn do
             {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
             if schematic do
-              case permeate(schematic, input[from_key]) do
+              case assimilate(schematic, input[from_key]) do
                 {:ok, output} ->
                   acc =
                     acc
@@ -160,8 +160,8 @@ defmodule Morn do
 
     %Schematic{
       kind: "map",
-      permeate: fn input ->
-        with {:ok, output} <- permeate(map(schematic), input) do
+      assimilate: fn input ->
+        with {:ok, output} <- assimilate(map(schematic), input) do
           {:ok, struct(mod, output)}
         end
       end
@@ -171,10 +171,10 @@ defmodule Morn do
   def oneof(schematics) do
     %Schematic{
       kind: "oneof",
-      permeate: fn input ->
+      assimilate: fn input ->
         inquiry =
           Enum.find_value(schematics, fn schematic ->
-            with {:error, _} <- permeate(schematic, input) do
+            with {:error, _} <- assimilate(schematic, input) do
               false
             end
           end)
@@ -195,7 +195,7 @@ defmodule Morn do
     end)
   end
 
-  def permeate(schematic, input) do
-    schematic.permeate.(input)
+  def assimilate(schematic, input) do
+    schematic.assimilate.(input)
   end
 end

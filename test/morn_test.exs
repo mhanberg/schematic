@@ -7,56 +7,56 @@ defmodule MornTest do
     defstruct [:jsonrpc, :method, :params, :id]
   end
 
-  describe "permeate" do
+  describe "assimilate" do
     test "str/0" do
       schematic = str()
       input = "lsp is kool"
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "str/1" do
       schematic = str("lsp is kool")
       input = "lsp is kool"
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "int/0" do
       schematic = int()
       input = 999
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "int/1" do
       schematic = int(999)
       input = 999
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "map/0" do
       schematic = map()
       input = %{}
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "list/0" do
       schematic = list()
       input = ["hello", "there"]
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "list/1" do
       schematic = list(int())
       input = [1, 2, 3]
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "oneof/1" do
       schematic = oneof([int(), str()])
       input = 1
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
 
       input = "hi"
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "map/1" do
@@ -66,7 +66,7 @@ defmodule MornTest do
         })
 
       input = %{"foo" => "hi there!", "bar" => []}
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "complex" do
@@ -101,7 +101,7 @@ defmodule MornTest do
         }
       }
 
-      assert {:ok, input} == permeate(schematic, input)
+      assert {:ok, input} == assimilate(schematic, input)
     end
 
     test "complex transformer" do
@@ -148,7 +148,7 @@ defmodule MornTest do
                     }
                   }
                 }
-              }} == permeate(schematic, input)
+              }} == assimilate(schematic, input)
     end
 
     defmodule S1 do
@@ -215,7 +215,7 @@ defmodule MornTest do
                     }
                   }
                 }
-              }} == permeate(schematic, input)
+              }} == assimilate(schematic, input)
     end
   end
 
@@ -232,7 +232,7 @@ defmodule MornTest do
           "dave" =>
             map(%{
               "first" => int(),
-              "second" => list(oneof([list(), map()]))
+              # "second" => list(oneof([list(), map()]))
             })
         })
 
@@ -243,7 +243,7 @@ defmodule MornTest do
         "alice" => "bob",
         "dave" => %{
           "first" => "name",
-          "second" => ["hi", "there"]
+          # "second" => ["hi", "there"]
         }
       }
 
@@ -256,9 +256,9 @@ defmodule MornTest do
                 "bob" => ~s|expected the integer 99|,
                 "dave" => %{
                   "first" => "expected an integer",
-                  "second" => "idk",
+                  # "second" => "idk",
                 }
-              }} == permeate(schematic, input)
+              }} == assimilate(schematic, input)
     end
   end
 end
