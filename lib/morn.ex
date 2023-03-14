@@ -3,24 +3,37 @@ defmodule Morn do
     defstruct [:permeate, :absorb, :kind]
   end
 
+  def null() do
+    %Schematic{
+      kind: :null,
+      permeate: fn
+        nil ->
+          {:ok, nil}
+
+        _input ->
+          {:error, "expected nil"}
+      end
+    }
+  end
+
   def str(literal \\ nil) do
     %Schematic{
       kind: "string",
       permeate: fn input ->
-        # FIXME this is ugly
+        # FIXME: this is ugly
         cond do
           is_binary(literal) ->
             if is_binary(input) && input == literal do
               {:ok, input}
             else
-              {:error, equality_error_str(input, literal)}
+              {:error, ~s|expected the string #{inspect(literal)}|}
             end
 
           is_binary(input) ->
             {:ok, input}
 
           true ->
-            {:error, "#{inspect(input, pretty: true)} is not a string"}
+            {:error, "expected a string"}
         end
       end
     }
@@ -30,20 +43,20 @@ defmodule Morn do
     %Schematic{
       kind: "integer",
       permeate: fn input ->
-        # FIXME this is ugly
+        # FIXME: this is ugly
         cond do
           is_integer(literal) ->
             if is_integer(input) && input == literal do
               {:ok, input}
             else
-              {:error, equality_error_str(input, literal)}
+              {:error, ~s|expected the integer #{inspect(literal)}|}
             end
 
           is_integer(input) ->
             {:ok, input}
 
           true ->
-            {:error, "#{inspect(input, pretty: true)} is not an int"}
+            {:error, "expected an integer"}
         end
       end
     }
@@ -56,7 +69,7 @@ defmodule Morn do
         if is_list(input) do
           {:ok, input}
         else
-          {:error, ~s|#{inspect(input, pretty: true)} is not a list|}
+          {:error, ~s|expected a list|}
         end
       end
     }
@@ -72,8 +85,10 @@ defmodule Morn do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
-              {:error, error} ->
-                {:halt, {:error, ~s|#{error} in #{inspect(input, pretty: true)}|}}
+              {:error, _error} ->
+                # TODO: make an "error_string" property on the schematic struct and build it into that, and then
+                #       you can reference it here
+                {:halt, {:error, ~s|expected a list of #{schematic.kind}|}}
             end
           end)
           |> then(fn
@@ -84,7 +99,7 @@ defmodule Morn do
               error
           end)
         else
-          {:error, ~s|#{inspect(input, pretty: true)} is not a list|}
+          {:error, ~s|expected a list|}
         end
       end
     }
@@ -97,7 +112,8 @@ defmodule Morn do
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
 
-          Enum.reduce_while(bp_keys, {:ok, input}, fn bpk, {:ok, acc} ->
+          Enum.reduce(bp_keys, [ok: input, errors: %{}], fn bpk,
+                                                            [{:ok, acc}, {:errors, errors}] ->
             schematic = blueprint[bpk]
             {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
@@ -109,21 +125,24 @@ defmodule Morn do
                     |> Map.delete(from_key)
                     |> Map.put(to_key, output)
 
-                  {:cont, {:ok, acc}}
+                  [{:ok, acc}, {:errors, errors}]
 
                 {:error, error} ->
-                  {:halt,
-                   {:error,
-                    "#{error} for key #{inspect(from_key, pretty: true)} in #{inspect(input, pretty: true)}"}}
+                  [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
               end
             else
-              {:halt,
-               {:error,
-                "#{inspect(input, pretty: true)} is missing a #{inspect(bpk, pretty: true)} key"}}
+              [{:ok, acc}, {:errors, Map.put(errors, from_key, "is blank")}]
             end
           end)
+          |> then(fn
+            [ok: output, errors: e] when map_size(e) == 0 ->
+              {:ok, output}
+
+            [ok: _output, errors: errors] ->
+              {:error, errors}
+          end)
         else
-          {:error, "#{inspect(input, pretty: true)} is not a map"}
+          {:error, "expected a map"}
         end
       end
     }
@@ -161,18 +180,22 @@ defmodule Morn do
           end)
 
         with nil <- inquiry do
-          {:error,
-           ~s|#{inspect(input, pretty: true)} is not one of: [#{Enum.map_join(schematics, ", ", & &1.kind)}]|}
+          {:error, ~s|expected a #{sentence_join(schematics, "or", & &1.kind)}|}
         end
       end
     }
   end
 
-  def permeate(schematic, input) do
-    schematic.permeate.(input)
+  defp sentence_join(items, joiner, mapper) do
+    length = length(items)
+    item_joiner = if length > 2, do: ", ", else: " "
+
+    Enum.map_join(Enum.with_index(items), item_joiner, fn {item, idx} ->
+      if idx == length - 1, do: joiner <> " " <> mapper.(item), else: mapper.(item)
+    end)
   end
 
-  defp equality_error_str(input, literal) do
-    "#{inspect(input, pretty: true)} != #{inspect(literal, pretty: true)}"
+  def permeate(schematic, input) do
+    schematic.permeate.(input)
   end
 end

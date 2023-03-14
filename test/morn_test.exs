@@ -1,5 +1,5 @@
 defmodule MornTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   import Morn
 
@@ -10,93 +10,53 @@ defmodule MornTest do
   describe "permeate" do
     test "str/0" do
       schematic = str()
-
       input = "lsp is kool"
-
       assert {:ok, input} == permeate(schematic, input)
-
-      assert {:error, "1 is not a string"} = permeate(schematic, 1)
     end
 
     test "str/1" do
       schematic = str("lsp is kool")
-
       input = "lsp is kool"
-
       assert {:ok, input} == permeate(schematic, input)
-
-      for i <- ["lsp is lame", 1, Map.new(), Keyword.new(), {nil}] do
-        assert {:error, ~s|#{inspect(i)} != "lsp is kool"|} == permeate(schematic, i)
-      end
     end
 
     test "int/0" do
       schematic = int()
-
       input = 999
-
       assert {:ok, input} == permeate(schematic, input)
-
-      assert {:error, ~s|"uh oh" is not an int|} = permeate(schematic, "uh oh")
     end
 
     test "int/1" do
       schematic = int(999)
-
       input = 999
-
       assert {:ok, input} == permeate(schematic, input)
-
-      for i <- ["lsp is lame", 1, Map.new(), Keyword.new(), {nil}] do
-        assert {:error, ~s|#{inspect(i)} != 999|} == permeate(schematic, i)
-      end
     end
 
     test "map/0" do
       schematic = map()
-
       input = %{}
-
       assert {:ok, input} == permeate(schematic, input)
-
-      assert {:error, ~s|"uh oh" is not a map|} = permeate(schematic, "uh oh")
     end
 
     test "list/0" do
       schematic = list()
-
       input = ["hello", "there"]
-
       assert {:ok, input} == permeate(schematic, input)
-
-      input = %{}
-
-      assert {:error, ~s|%{} is not a list|} = permeate(schematic, input)
     end
 
     test "list/1" do
       schematic = list(int())
-
       input = [1, 2, 3]
-
       assert {:ok, input} == permeate(schematic, input)
-
-      input = ["hi", "there"]
-
-      assert {:error, ~s|"hi" is not an int in ["hi", "there"]|} = permeate(schematic, input)
     end
 
     test "oneof/1" do
       schematic = oneof([int(), str()])
-
       input = 1
       assert {:ok, input} == permeate(schematic, input)
 
       input = "hi"
       assert {:ok, input} == permeate(schematic, input)
-
-      input = []
-      assert {:error, ~s|[] is not one of: [integer, string]|} = permeate(schematic, input)
     end
 
     test "map/1" do
@@ -106,13 +66,7 @@ defmodule MornTest do
         })
 
       input = %{"foo" => "hi there!", "bar" => []}
-
       assert {:ok, input} == permeate(schematic, input)
-
-      input = %{"foo" => 1, "bar" => []}
-
-      assert {:error, ~s|1 is not a string for key "foo" in %{"bar" => [], "foo" => 1}|} =
-               permeate(schematic, input)
     end
 
     test "complex" do
@@ -148,40 +102,6 @@ defmodule MornTest do
       }
 
       assert {:ok, input} == permeate(schematic, input)
-
-      input = %{
-        "foo" => "hi there!",
-        "bar" => %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{
-            "baz" => %{
-              "three" => "the third"
-            }
-          }
-        }
-      }
-
-      expected_error =
-        ~s"""
-        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{"baz" => %{"three" => "the third"}}
-        } for key "bar" in %{
-          "bar" => %{
-            "alice" => "Alice",
-            "bob" => ["is", "the", "coolest"],
-            "carol" => %{"baz" => %{"three" => "the third"}}
-          },
-          "foo" => "hi there!"
-        }
-        """
-        |> String.trim()
-
-      assert {:error, actual_error} = permeate(schematic, input)
-
-      assert actual_error == expected_error
     end
 
     test "complex transformer" do
@@ -229,40 +149,6 @@ defmodule MornTest do
                   }
                 }
               }} == permeate(schematic, input)
-
-      input = %{
-        "foo" => "hi there!",
-        "bar" => %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{
-            "baz" => %{
-              "three" => "the third"
-            }
-          }
-        }
-      }
-
-      expected_error =
-        ~s"""
-        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{"baz" => %{"three" => "the third"}}
-        } for key "bar" in %{
-          "bar" => %{
-            "alice" => "Alice",
-            "bob" => ["is", "the", "coolest"],
-            "carol" => %{"baz" => %{"three" => "the third"}}
-          },
-          "foo" => "hi there!"
-        }
-        """
-        |> String.trim()
-
-      assert {:error, actual_error} = permeate(schematic, input)
-
-      assert actual_error == expected_error
     end
 
     defmodule S1 do
@@ -330,66 +216,49 @@ defmodule MornTest do
                   }
                 }
               }} == permeate(schematic, input)
+    end
+  end
+
+  describe "error messages" do
+    test "validates every key of a map" do
+      schematic =
+        map(%{
+          "foo" => oneof([str(), int(), list()]),
+          "bar" => str(),
+          "baz" => list(),
+          "alice" => str("foo"),
+          "bob" => int(99),
+          "carol" => oneof([null(), int()]),
+          "dave" =>
+            map(%{
+              "first" => int(),
+              "second" => list(oneof([list(), map()]))
+            })
+        })
 
       input = %{
-        "foo" => "hi there!",
-        "bar" => %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{
-            "baz" => %{
-              "three" => "the third"
-            }
-          }
+        "foo" => %{},
+        "bar" => 1,
+        "baz" => "hi!",
+        "alice" => "bob",
+        "dave" => %{
+          "first" => "name",
+          "second" => ["hi", "there"]
         }
       }
 
-      expected_error =
-        ~s"""
-        %{"three" => "the third"} is not one of: [map, map] for key "baz" in %{"baz" => %{"three" => "the third"}} for key "carol" in %{
-          "alice" => "Alice",
-          "bob" => ["is", "the", "coolest"],
-          "carol" => %{"baz" => %{"three" => "the third"}}
-        } for key "bar" in %{
-          "bar" => %{
-            "alice" => "Alice",
-            "bob" => ["is", "the", "coolest"],
-            "carol" => %{"baz" => %{"three" => "the third"}}
-          },
-          "foo" => "hi there!"
-        }
-        """
-        |> String.trim()
-
-      assert {:error, actual_error} = permeate(schematic, input)
-
-      assert actual_error == expected_error
+      assert {:error,
+              %{
+                "foo" => "expected a string, integer, or list",
+                "bar" => "expected a string",
+                "baz" => "expected a list",
+                "alice" => ~s|expected the string "foo"|,
+                "bob" => ~s|expected the integer 99|,
+                "dave" => %{
+                  "first" => "expected an integer",
+                  "second" => "idk",
+                }
+              }} == permeate(schematic, input)
     end
-
-    # test "works" do
-    #   schematic =
-    #     map(Request, %{
-    #       {"jsonrpc", :jsonrpc} => str("2.0"),
-    #       {"method", :method} => str("initialize"),
-    #       {"params", :params} => map(%{}),
-    #       {"id", :id} => int()
-    #     })
-
-    #   input = %{
-    #     "jsonrpc" => "2.0",
-    #     "method" => "initialize",
-    #     "params" => %{},
-    #     "id" => 1
-    #   }
-
-    #   assert {:ok, absorber} = permeate(schematic, input)
-
-    #   assert %Request{
-    #            jsonrpc: "2.0",
-    #            method: "initialize",
-    #            params: %{},
-    #            id: 1
-    #          } == absorber.()
-    # end
   end
 end
