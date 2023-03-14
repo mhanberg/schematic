@@ -1,6 +1,6 @@
-# morn
+# 🌅 morn
 
-[m]itch's [o]pinionated [n]orm
+mitch's scrambled take on norm
 
 ## Installation
 
