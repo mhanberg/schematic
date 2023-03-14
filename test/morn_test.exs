@@ -13,8 +13,7 @@ defmodule MornTest do
 
       input = "lsp is kool"
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       assert {:error, "1 is not a string"} = permeate(schematic, 1)
     end
@@ -24,8 +23,7 @@ defmodule MornTest do
 
       input = "lsp is kool"
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       for i <- ["lsp is lame", 1, Map.new(), Keyword.new(), {nil}] do
         assert {:error, ~s|#{inspect(i)} != "lsp is kool"|} == permeate(schematic, i)
@@ -37,8 +35,7 @@ defmodule MornTest do
 
       input = 999
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       assert {:error, ~s|"uh oh" is not an int|} = permeate(schematic, "uh oh")
     end
@@ -48,8 +45,7 @@ defmodule MornTest do
 
       input = 999
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       for i <- ["lsp is lame", 1, Map.new(), Keyword.new(), {nil}] do
         assert {:error, ~s|#{inspect(i)} != 999|} == permeate(schematic, i)
@@ -61,8 +57,7 @@ defmodule MornTest do
 
       input = %{}
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       assert {:error, ~s|"uh oh" is not a map|} = permeate(schematic, "uh oh")
     end
@@ -72,8 +67,7 @@ defmodule MornTest do
 
       input = ["hello", "there"]
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = %{}
 
@@ -85,8 +79,7 @@ defmodule MornTest do
 
       input = [1, 2, 3]
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = ["hi", "there"]
 
@@ -97,12 +90,10 @@ defmodule MornTest do
       schematic = oneof([int(), str()])
 
       input = 1
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = "hi"
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = []
       assert {:error, ~s|[] is not one of: [integer, string]|} = permeate(schematic, input)
@@ -116,8 +107,7 @@ defmodule MornTest do
 
       input = %{"foo" => "hi there!", "bar" => []}
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = %{"foo" => 1, "bar" => []}
 
@@ -157,8 +147,7 @@ defmodule MornTest do
         }
       }
 
-      assert {:ok, absorber} = permeate(schematic, input)
-      assert input == absorber.()
+      assert {:ok, input} == permeate(schematic, input)
 
       input = %{
         "foo" => "hi there!",
@@ -197,7 +186,7 @@ defmodule MornTest do
 
     test "complex transformer" do
       schematic =
-        struct(%{
+        map(%{
           {"foo", :foo} => oneof([str(), int()]),
           {"bar", :bar} =>
             map(%{
@@ -227,20 +216,19 @@ defmodule MornTest do
         }
       }
 
-      assert {:ok, absorber} = permeate(schematic, input)
-
-      assert %{
-               foo: "hi there!",
-               bar: %{
-                 alice: "Alice",
-                 bob: ["is", "the", "coolest"],
-                 carol: %{
-                   baz: %{
-                     two: "the second"
-                   }
-                 }
-               }
-             } == absorber.()
+      assert {:ok,
+              %{
+                foo: "hi there!",
+                bar: %{
+                  alice: "Alice",
+                  bob: ["is", "the", "coolest"],
+                  carol: %{
+                    baz: %{
+                      two: "the second"
+                    }
+                  }
+                }
+              }} == permeate(schematic, input)
 
       input = %{
         "foo" => "hi there!",
@@ -329,20 +317,19 @@ defmodule MornTest do
         }
       }
 
-      assert {:ok, absorber} = permeate(schematic, input)
-
-      assert %S1{
-               foo: "hi there!",
-               bar: %S2{
-                 alice: "Alice",
-                 bob: ["is", "the", "coolest"],
-                 carol: %S3{
-                   baz: %S5{
-                     two: "the second"
-                   }
-                 }
-               }
-             } == absorber.()
+      assert {:ok,
+              %S1{
+                foo: "hi there!",
+                bar: %S2{
+                  alice: "Alice",
+                  bob: ["is", "the", "coolest"],
+                  carol: %S3{
+                    baz: %S5{
+                      two: "the second"
+                    }
+                  }
+                }
+              }} == permeate(schematic, input)
 
       input = %{
         "foo" => "hi there!",

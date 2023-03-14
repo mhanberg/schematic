@@ -11,13 +11,13 @@ defmodule Morn do
         cond do
           is_binary(literal) ->
             if is_binary(input) && input == literal do
-              {:ok, fn -> input end}
+              {:ok, input}
             else
               {:error, equality_error_str(input, literal)}
             end
 
           is_binary(input) ->
-            {:ok, fn -> input end}
+            {:ok, input}
 
           true ->
             {:error, "#{inspect(input, pretty: true)} is not a string"}
@@ -34,13 +34,13 @@ defmodule Morn do
         cond do
           is_integer(literal) ->
             if is_integer(input) && input == literal do
-              {:ok, fn -> input end}
+              {:ok, input}
             else
               {:error, equality_error_str(input, literal)}
             end
 
           is_integer(input) ->
-            {:ok, fn -> input end}
+            {:ok, input}
 
           true ->
             {:error, "#{inspect(input, pretty: true)} is not an int"}
@@ -54,7 +54,7 @@ defmodule Morn do
       kind: "list",
       permeate: fn input ->
         if is_list(input) do
-          {:ok, fn -> input end}
+          {:ok, input}
         else
           {:error, ~s|#{inspect(input, pretty: true)} is not a list|}
         end
@@ -67,25 +67,18 @@ defmodule Morn do
       kind: "list",
       permeate: fn input ->
         if is_list(input) do
-          Enum.reduce_while(input, {:ok, fn -> [] end}, fn el, {:ok, absorber_acc} ->
+          Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
             case permeate(schematic, el) do
-              {:ok, absorber} ->
-                absorber = fn ->
-                  absorbed_el = absorber.()
-                  absorbed_rest = absorber_acc.()
-
-                  [absorbed_el | absorbed_rest]
-                end
-
-                {:cont, {:ok, absorber}}
+              {:ok, output} ->
+                {:cont, {:ok, [output | acc]}}
 
               {:error, error} ->
                 {:halt, {:error, ~s|#{error} in #{inspect(input, pretty: true)}|}}
             end
           end)
           |> then(fn
-            {:ok, absorber} ->
-              {:ok, fn -> Enum.reverse(absorber.()) end}
+            {:ok, result} ->
+              {:ok, Enum.reverse(result)}
 
             error ->
               error
@@ -104,20 +97,19 @@ defmodule Morn do
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
 
-          Enum.reduce_while(bp_keys, {:ok, fn -> input end}, fn bpk, {:ok, absorber_acc} ->
+          Enum.reduce_while(bp_keys, {:ok, input}, fn bpk, {:ok, acc} ->
             schematic = blueprint[bpk]
             {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
             if schematic do
               case permeate(schematic, input[from_key]) do
-                {:ok, absorber} ->
-                  absorber = fn ->
-                    absorber_acc.()
+                {:ok, output} ->
+                  acc =
+                    acc
                     |> Map.delete(from_key)
-                    |> Map.put(to_key, absorber.())
-                  end
+                    |> Map.put(to_key, output)
 
-                  {:cont, {:ok, absorber}}
+                  {:cont, {:ok, acc}}
 
                 {:error, error} ->
                   {:halt,
@@ -150,10 +142,8 @@ defmodule Morn do
     %Schematic{
       kind: "map",
       permeate: fn input ->
-        with {:ok, absorber} <- permeate(map(schematic), input) do
-          a1 = absorber.()
-          dbg()
-          {:ok, fn -> struct(mod, a1) end}
+        with {:ok, output} <- permeate(map(schematic), input) do
+          {:ok, struct(mod, output)}
         end
       end
     }
@@ -179,7 +169,6 @@ defmodule Morn do
   end
 
   def permeate(schematic, input) do
-    dbg()
     schematic.permeate.(input)
   end
 
