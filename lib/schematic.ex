@@ -1,7 +1,5 @@
-defmodule Morn do
-  defmodule Schematic do
-    defstruct [:assimilate, :kind]
-  end
+defmodule Schematic do
+  defstruct [:assimilate, :kind]
 
   def null() do
     %Schematic{

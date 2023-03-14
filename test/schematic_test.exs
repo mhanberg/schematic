@@ -1,7 +1,7 @@
-defmodule MornTest do
+defmodule SchematicTest do
   use ExUnit.Case, async: true
 
-  import Morn
+  import Schematic
 
   defmodule Request do
     defstruct [:jsonrpc, :method, :params, :id]
