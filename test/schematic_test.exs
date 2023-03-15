@@ -324,5 +324,19 @@ defmodule SchematicTest do
       assert {:ok, %{type: nil}} == assimilate(schematic, %{type: nil})
       assert {:ok, %{type: nil}} == assimilate(schematic, %{name: "bob"})
     end
+
+    test "optional keys" do
+      schematic =
+        map(%{
+          optional(:name) => str(),
+          type: int()
+        })
+
+      assert {:ok, %{type: 10}} == assimilate(schematic, %{type: 10})
+      assert {:ok, %{type: 10, name: "bob"}} == assimilate(schematic, %{type: 10, name: "bob"})
+
+      assert {:error, %{name: "expected a string"}} ==
+               assimilate(schematic, %{type: 10, name: 10})
+    end
   end
 end

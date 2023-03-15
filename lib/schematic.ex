@@ -1,6 +1,11 @@
 defmodule Schematic do
   defstruct [:assimilate, :kind, :message]
 
+  defmodule OptionalKey do
+    @enforce_keys [:key]
+    defstruct [:key]
+  end
+
   def null() do
     %Schematic{
       kind: :null,
@@ -165,20 +170,24 @@ defmodule Schematic do
             [ok: %{}, errors: %{}],
             fn bpk, [{:ok, acc}, {:errors, errors}] ->
               schematic = blueprint[bpk]
-              {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
+              key = with %OptionalKey{key: key} <- bpk, do: key
+              {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
 
+              if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
+                [{:ok, acc}, {:errors, errors}]
+              else
+                case assimilate(schematic, input[from_key]) do
+                  {:ok, output} ->
+                    acc =
+                      acc
+                      |> Map.delete(from_key)
+                      |> Map.put(to_key, output)
 
-              case assimilate(schematic, dbg(input[from_key])) do
-                {:ok, output} ->
-                  acc =
-                    acc
-                    |> Map.delete(from_key)
-                    |> Map.put(to_key, output)
+                    [{:ok, acc}, {:errors, errors}]
 
-                  [{:ok, acc}, {:errors, errors}]
-
-                {:error, error} ->
-                  [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                  {:error, error} ->
+                    [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                end
               end
             end
           )
@@ -288,5 +297,9 @@ defmodule Schematic do
 
   def assimilate(schematic, input) do
     schematic.assimilate.(input)
+  end
+
+  def optional(key) do
+    %OptionalKey{key: key}
   end
 end
