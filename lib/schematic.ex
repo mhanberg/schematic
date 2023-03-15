@@ -189,7 +189,48 @@ defmodule Schematic do
     }
   end
 
-  def oneof(schematics) do
+  def func(function, opts \\ []) do
+    message = Keyword.fetch!(opts, :message)
+
+    %Schematic{
+      kind: "function",
+      message: message,
+      assimilate: fn input ->
+        if function.(input) do
+          {:ok, input}
+        else
+          {:error, message}
+        end
+      end
+    }
+  end
+
+  def all(schematics) when is_list(schematics) do
+    message = Enum.map(schematics, & &1.message)
+
+    %Schematic{
+      kind: "all",
+      message: message,
+      assimilate: fn input ->
+        errors =
+          for schematic <- schematics,
+              {result, message} = assimilate(schematic, input),
+              result == :error do
+            message
+          end
+
+        if Enum.empty?(errors) do
+          {:ok, input}
+        else
+          {:error, errors}
+        end
+      end
+    }
+  end
+
+  def oneof(schematics) when is_list(schematics) do
+    message = "either #{sentence_join(schematics, "or", & &1.message)}"
+
     %Schematic{
       kind: "oneof",
       message: message,

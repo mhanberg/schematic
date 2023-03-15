@@ -217,6 +217,29 @@ defmodule SchematicTest do
                 }
               }} == assimilate(schematic, input)
     end
+
+    test "func/2" do
+      schematic = func(fn n -> n > 10 end, message: "must be greater than 10")
+
+      assert {:ok, 12} = assimilate(schematic, 12)
+      assert {:error, "must be greater than 10"} = assimilate(schematic, 9)
+    end
+
+    test "all/1" do
+      schematic =
+        all([
+          int(),
+          func(&(&1 > 10), message: "must be greater than 10"),
+          func(&(&1 < 20), message: "must be less than 20")
+        ])
+
+      assert {:ok, 12} = assimilate(schematic, 12)
+      assert {:error, ["must be greater than 10"]} = assimilate(schematic, 9)
+      assert {:error, ["must be less than 20"]} = assimilate(schematic, 21)
+
+      assert {:error, ["expected an integer", "must be less than 20"]} =
+               assimilate(schematic, "hi")
+    end
   end
 
   describe "error messages" do
