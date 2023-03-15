@@ -66,7 +66,7 @@ defmodule SchematicTest do
         })
 
       input = %{"foo" => "hi there!", "bar" => []}
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, %{"foo" => "hi there!"}} == assimilate(schematic, input)
     end
 
     test "complex" do
@@ -312,6 +312,17 @@ defmodule SchematicTest do
                 },
                 "foo" => "expected either a string, an integer, or a list"
               }} == assimilate(schematic, input)
+    end
+
+    test "nullable values" do
+      schematic =
+        map(%{
+          type: oneof([null(), int()])
+        })
+
+      assert {:ok, %{type: 10}} == assimilate(schematic, %{type: 10})
+      assert {:ok, %{type: nil}} == assimilate(schematic, %{type: nil})
+      assert {:ok, %{type: nil}} == assimilate(schematic, %{name: "bob"})
     end
   end
 end

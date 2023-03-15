@@ -162,26 +162,23 @@ defmodule Schematic do
 
           Enum.reduce(
             bp_keys,
-            [ok: input, errors: %{}],
+            [ok: %{}, errors: %{}],
             fn bpk, [{:ok, acc}, {:errors, errors}] ->
               schematic = blueprint[bpk]
               {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
-              if schematic do
-                case assimilate(schematic, input[from_key]) do
-                  {:ok, output} ->
-                    acc =
-                      acc
-                      |> Map.delete(from_key)
-                      |> Map.put(to_key, output)
 
-                    [{:ok, acc}, {:errors, errors}]
+              case assimilate(schematic, dbg(input[from_key])) do
+                {:ok, output} ->
+                  acc =
+                    acc
+                    |> Map.delete(from_key)
+                    |> Map.put(to_key, output)
 
-                  {:error, error} ->
-                    [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
-                end
-              else
-                [{:ok, acc}, {:errors, Map.put(errors, from_key, "is blank")}]
+                  [{:ok, acc}, {:errors, errors}]
+
+                {:error, error} ->
+                  [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
               end
             end
           )
