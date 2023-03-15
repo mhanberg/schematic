@@ -1,22 +1,28 @@
 defmodule Schematic do
-  defstruct [:assimilate, :kind]
+  defstruct [:assimilate, :kind, :message]
 
   def null() do
     %Schematic{
       kind: :null,
+      message: "null",
       assimilate: fn
-        nil ->
-          {:ok, nil}
-
-        _input ->
-          {:error, "expected nil"}
+        nil -> {:ok, nil}
+        _input -> {:error, "expected null"}
       end
     }
   end
 
   def str(literal \\ nil) do
+    message =
+      if literal do
+        "the literal string #{inspect(literal)}"
+      else
+        "a string"
+      end
+
     %Schematic{
       kind: "string",
+      message: message,
       assimilate: fn input ->
         # FIXME: this is ugly
         cond do
@@ -24,22 +30,30 @@ defmodule Schematic do
             if is_binary(input) && input == literal do
               {:ok, input}
             else
-              {:error, ~s|expected the string #{inspect(literal)}|}
+              {:error, ~s|expected #{message}|}
             end
 
           is_binary(input) ->
             {:ok, input}
 
           true ->
-            {:error, "expected a string"}
+            {:error, "expected #{message}"}
         end
       end
     }
   end
 
   def int(literal \\ nil) do
+    message =
+      if literal do
+        "the literal integer #{inspect(literal)}"
+      else
+        "an integer"
+      end
+
     %Schematic{
       kind: "integer",
+      message: message,
       assimilate: fn input ->
         # FIXME: this is ugly
         cond do
@@ -47,35 +61,41 @@ defmodule Schematic do
             if is_integer(input) && input == literal do
               {:ok, input}
             else
-              {:error, ~s|expected the integer #{inspect(literal)}|}
+              {:error, ~s|expected #{message}|}
             end
 
           is_integer(input) ->
             {:ok, input}
 
           true ->
-            {:error, "expected an integer"}
+            {:error, "expected #{message}"}
         end
       end
     }
   end
 
   def list() do
+    message = "a list"
+
     %Schematic{
       kind: "list",
+      message: message,
       assimilate: fn input ->
         if is_list(input) do
           {:ok, input}
         else
-          {:error, ~s|expected a list|}
+          {:error, ~s|expected #{message}|}
         end
       end
     }
   end
 
   def list(schematic) do
+    message = "a list of #{schematic.message}"
+
     %Schematic{
       kind: "list",
+      message: message,
       assimilate: fn input ->
         if is_list(input) do
           Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
@@ -84,9 +104,7 @@ defmodule Schematic do
                 {:cont, {:ok, [output | acc]}}
 
               {:error, _error} ->
-                # TODO: make an "error_string" property on the schematic struct and build it into that, and then
-                #       you can reference it here
-                {:halt, {:error, ~s|expected a list of #{schematic.kind}|}}
+                {:halt, {:error, ~s|expected #{message}|}}
             end
           end)
           |> then(fn
@@ -106,32 +124,36 @@ defmodule Schematic do
   def map(blueprint \\ %{}) do
     %Schematic{
       kind: "map",
+      message: "a map",
       assimilate: fn input ->
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
 
-          Enum.reduce(bp_keys, [ok: input, errors: %{}], fn bpk,
-                                                            [{:ok, acc}, {:errors, errors}] ->
-            schematic = blueprint[bpk]
-            {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
+          Enum.reduce(
+            bp_keys,
+            [ok: input, errors: %{}],
+            fn bpk, [{:ok, acc}, {:errors, errors}] ->
+              schematic = blueprint[bpk]
+              {from_key, to_key} = with key when not is_tuple(key) <- bpk, do: {key, key}
 
-            if schematic do
-              case assimilate(schematic, input[from_key]) do
-                {:ok, output} ->
-                  acc =
-                    acc
-                    |> Map.delete(from_key)
-                    |> Map.put(to_key, output)
+              if schematic do
+                case assimilate(schematic, input[from_key]) do
+                  {:ok, output} ->
+                    acc =
+                      acc
+                      |> Map.delete(from_key)
+                      |> Map.put(to_key, output)
 
-                  [{:ok, acc}, {:errors, errors}]
+                    [{:ok, acc}, {:errors, errors}]
 
-                {:error, error} ->
-                  [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                  {:error, error} ->
+                    [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                end
+              else
+                [{:ok, acc}, {:errors, Map.put(errors, from_key, "is blank")}]
               end
-            else
-              [{:ok, acc}, {:errors, Map.put(errors, from_key, "is blank")}]
             end
-          end)
+          )
           |> then(fn
             [ok: output, errors: e] when map_size(e) == 0 ->
               {:ok, output}
@@ -158,6 +180,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
+      message: "a map",
       assimilate: fn input ->
         with {:ok, output} <- assimilate(map(schematic), input) do
           {:ok, struct(mod, output)}
@@ -169,6 +192,7 @@ defmodule Schematic do
   def oneof(schematics) do
     %Schematic{
       kind: "oneof",
+      message: message,
       assimilate: fn input ->
         inquiry =
           Enum.find_value(schematics, fn schematic ->
@@ -178,7 +202,7 @@ defmodule Schematic do
           end)
 
         with nil <- inquiry do
-          {:error, ~s|expected a #{sentence_join(schematics, "or", & &1.kind)}|}
+          {:error, ~s|expected #{message}|}
         end
       end
     }

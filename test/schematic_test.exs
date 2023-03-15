@@ -221,6 +221,13 @@ defmodule SchematicTest do
 
   describe "error messages" do
     test "validates every key of a map" do
+      teacher =
+        map(%{
+          "name" => str(),
+          "grade" => int(),
+          "prefix" => oneof([str("Mrs."), str("Mr.")])
+        })
+
       schematic =
         map(%{
           "foo" => oneof([str(), int(), list()]),
@@ -232,7 +239,8 @@ defmodule SchematicTest do
           "dave" =>
             map(%{
               "first" => int(),
-              # "second" => list(oneof([list(), map()]))
+              "second" => list(oneof([list(), map()])),
+              "teacher" => teacher
             })
         })
 
@@ -243,21 +251,28 @@ defmodule SchematicTest do
         "alice" => "bob",
         "dave" => %{
           "first" => "name",
-          # "second" => ["hi", "there"]
+          "second" => ["hi", "there"],
+          "teacher" => %{}
         }
       }
 
       assert {:error,
               %{
-                "foo" => "expected a string, integer, or list",
+                "alice" => "expected the literal string \"foo\"",
                 "bar" => "expected a string",
                 "baz" => "expected a list",
-                "alice" => ~s|expected the string "foo"|,
-                "bob" => ~s|expected the integer 99|,
+                "bob" => "expected the literal integer 99",
                 "dave" => %{
                   "first" => "expected an integer",
-                  # "second" => "idk",
-                }
+                  "second" => "expected a list of either a list or a map",
+                  "teacher" => %{
+                    "grade" => "expected an integer",
+                    "name" => "expected a string",
+                    "prefix" =>
+                      "expected either the literal string \"Mrs.\" or the literal string \"Mr.\""
+                  }
+                },
+                "foo" => "expected either a string, an integer, or a list"
               }} == assimilate(schematic, input)
     end
   end
