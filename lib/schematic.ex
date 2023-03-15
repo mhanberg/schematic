@@ -12,6 +12,37 @@ defmodule Schematic do
     }
   end
 
+  def bool(literal \\ nil) do
+    message =
+      if is_boolean(literal) do
+        "#{inspect(literal)}"
+      else
+        "a boolean"
+      end
+
+    %Schematic{
+      kind: "boolean",
+      message: message,
+      assimilate: fn input ->
+        # FIXME: this is ugly
+        cond do
+          is_boolean(literal) ->
+            if is_boolean(input) && input == literal do
+              {:ok, input}
+            else
+              {:error, ~s|expected #{message}|}
+            end
+
+          is_boolean(input) ->
+            {:ok, input}
+
+          true ->
+            {:error, "expected #{message}"}
+        end
+      end
+    }
+  end
+
   def str(literal \\ nil) do
     message =
       if literal do

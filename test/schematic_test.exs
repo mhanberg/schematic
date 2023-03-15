@@ -218,6 +218,21 @@ defmodule SchematicTest do
               }} == assimilate(schematic, input)
     end
 
+    test "bool/1" do
+      schematic = bool()
+
+      assert {:ok, true} = assimilate(schematic, true)
+      assert {:ok, false} = assimilate(schematic, false)
+
+      schematic = bool(true)
+      assert {:ok, true} = assimilate(schematic, true)
+      assert {:error, "expected true"} = assimilate(schematic, false)
+
+      schematic = bool(false)
+      assert {:ok, false} = assimilate(schematic, false)
+      assert {:error, "expected false"} = assimilate(schematic, true)
+    end
+
     test "func/2" do
       schematic = func(fn n -> n > 10 end, message: "must be greater than 10")
 
