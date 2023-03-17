@@ -62,7 +62,7 @@ assimilate(schematic, input)
 ```elixir
 def deps do
   [
-    {:schematic, "~> 0.0.1"}
+    {:schematic, "~> 0.0.2"}
   ]
 end
 ```
