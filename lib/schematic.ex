@@ -256,8 +256,8 @@ defmodule Schematic do
   end
 
   def map(opts) when is_list(opts) do
-    key_schematic = Keyword.get(opts, :keys, func(&Function.identity/1, message: ""))
-    value_schematic = Keyword.get(opts, :values, func(&Function.identity/1, message: ""))
+    key_schematic = Keyword.get(opts, :keys, raw(&Function.identity/1, message: ""))
+    value_schematic = Keyword.get(opts, :values, raw(&Function.identity/1, message: ""))
 
     %Schematic{
       kind: "map",
@@ -319,7 +319,7 @@ defmodule Schematic do
     }
   end
 
-  def func(function, opts \\ []) do
+  def raw(function, opts \\ []) do
     message = Keyword.get(opts, :message, "is invalid")
     transformer = Keyword.get(opts, :transform, &Function.identity/1)
 

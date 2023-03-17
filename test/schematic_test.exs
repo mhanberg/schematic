@@ -251,16 +251,16 @@ defmodule SchematicTest do
       assert {:error, "expected false"} = assimilate(schematic, true)
     end
 
-    test "func/2" do
-      schematic = func(fn n -> n > 10 end, message: "must be greater than 10")
+    test "raw/2" do
+      schematic = raw(fn n -> n > 10 end, message: "must be greater than 10")
 
       assert {:ok, 12} = assimilate(schematic, 12)
       assert {:error, "must be greater than 10"} = assimilate(schematic, 9)
     end
 
-    test "func/2 with :transform option" do
+    test "raw/2 with :transform option" do
       schematic =
-        func(fn n -> is_list(n) and length(n) == 3 end,
+        raw(fn n -> is_list(n) and length(n) == 3 end,
           message: "must be a tuple of size 3",
           transform: &List.to_tuple/1
         )
@@ -273,8 +273,8 @@ defmodule SchematicTest do
       schematic =
         all([
           int(),
-          func(&(&1 > 10), message: "must be greater than 10"),
-          func(&(&1 < 20), message: "must be less than 20")
+          raw(&(&1 > 10), message: "must be greater than 10"),
+          raw(&(&1 < 20), message: "must be less than 20")
         ])
 
       assert {:ok, 12} = assimilate(schematic, 12)
@@ -383,14 +383,14 @@ defmodule SchematicTest do
                assimilate(schematic, %{"foo" => 1, 1 => "bam"})
 
       schematic =
-        map(keys: all([int(), func(fn n -> n > 5 end, message: "greater than 5")]), values: str())
+        map(keys: all([int(), raw(fn n -> n > 5 end, message: "greater than 5")]), values: str())
 
       assert {:ok, %{6 => "6"}} == assimilate(schematic, %{6 => "6", 1 => "bam"})
 
       schematic =
         map(
           keys:
-            func(fn n ->
+            raw(fn n ->
               case n do
                 n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
                 _ -> false
@@ -408,7 +408,7 @@ defmodule SchematicTest do
       schematic =
         map(
           keys:
-            func(
+            raw(
               fn n ->
                 case n do
                   n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
