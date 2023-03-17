@@ -361,15 +361,12 @@ defmodule SchematicTest do
       schematic =
         map(
           keys:
-            func(
-              fn n ->
-                case n do
-                  n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
-                  _ -> false
-                end
-              end,
-              message: ""
-            ),
+            func(fn n ->
+              case n do
+                n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
+                _ -> false
+              end
+            end),
           values: str()
         )
 

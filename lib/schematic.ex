@@ -272,14 +272,15 @@ defmodule Schematic do
   end
 
   def func(function, opts \\ []) do
-    message = Keyword.fetch!(opts, :message)
+    message = Keyword.get(opts, :message, "is invalid")
+    transformer = Keyword.get(opts, :transform, &Function.identity/1)
 
     %Schematic{
       kind: "function",
       message: message,
       assimilate: fn input ->
         if function.(input) do
-          {:ok, input}
+          {:ok, transformer.(input)}
         else
           {:error, message}
         end
