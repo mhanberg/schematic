@@ -338,5 +338,46 @@ defmodule SchematicTest do
       assert {:error, %{name: "expected a string"}} ==
                assimilate(schematic, %{type: 10, name: 10})
     end
+
+    test "empty map" do
+      schematic = map()
+
+      assert {:ok, %{}} == assimilate(schematic, %{"foo" => 1})
+    end
+
+    test "key types" do
+      schematic = map(keys: str(), values: str())
+
+      assert {:ok, %{"foo" => "one"}} == assimilate(schematic, %{"foo" => "one", 1 => "bam"})
+
+      assert {:error, %{"foo" => "expected a string"}} ==
+               assimilate(schematic, %{"foo" => 1, 1 => "bam"})
+
+      schematic =
+        map(keys: all([int(), func(fn n -> n > 5 end, message: "greater than 5")]), values: str())
+
+      assert {:ok, %{6 => "6"}} == assimilate(schematic, %{6 => "6", 1 => "bam"})
+
+      schematic =
+        map(
+          keys:
+            func(
+              fn n ->
+                case n do
+                  n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
+                  _ -> false
+                end
+              end,
+              message: ""
+            ),
+          values: str()
+        )
+
+      assert {:ok, %{"6" => "has a string key that parses as an integer"}} ==
+               assimilate(schematic, %{
+                 "6" => "has a string key that parses as an integer",
+                 1 => "bam"
+               })
+    end
   end
 end

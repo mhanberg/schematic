@@ -157,7 +157,9 @@ defmodule Schematic do
     }
   end
 
-  def map(blueprint \\ %{}) do
+  def map(blueprint \\ %{})
+
+  def map(blueprint) when is_map(blueprint) do
     %Schematic{
       kind: "map",
       message: "a map",
@@ -188,6 +190,49 @@ defmodule Schematic do
                   {:error, error} ->
                     [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
                 end
+              end
+            end
+          )
+          |> then(fn
+            [ok: output, errors: e] when map_size(e) == 0 ->
+              {:ok, output}
+
+            [ok: _output, errors: errors] ->
+              {:error, errors}
+          end)
+        else
+          {:error, "expected a map"}
+        end
+      end
+    }
+  end
+
+  def map(opts) when is_list(opts) do
+    key_schematic = Keyword.get(opts, :keys, func(&Function.identity/1, message: ""))
+    value_schematic = Keyword.get(opts, :values, func(&Function.identity/1, message: ""))
+
+    %Schematic{
+      kind: "map",
+      message: "a map",
+      assimilate: fn input ->
+        if is_map(input) do
+          Enum.reduce(
+            Map.keys(input),
+            [ok: %{}, errors: %{}],
+            fn input_key, [{:ok, acc}, {:errors, errors}] ->
+              case assimilate(key_schematic, input_key) do
+                {:ok, key_output} ->
+                  case assimilate(value_schematic, input[input_key]) do
+                    {:ok, value_output} ->
+                      [{:ok, Map.put(acc, key_output, value_output)}, {:errors, errors}]
+
+                    {:error, error} ->
+                      [{:ok, acc}, {:errors, Map.put(errors, input_key, error)}]
+                  end
+
+                {:error, _error} ->
+                  # NOTE: we pass just ignore keys which non conforming keys
+                  [{:ok, acc}, {:errors, errors}]
               end
             end
           )
