@@ -6,6 +6,10 @@ defmodule Schematic do
     defstruct [:key]
   end
 
+  def any() do
+    %Schematic{kind: :any, message: "", assimilate: fn x -> {:ok, x} end}
+  end
+
   def null() do
     %Schematic{
       kind: :null,

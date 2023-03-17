@@ -8,6 +8,10 @@ defmodule SchematicTest do
   end
 
   describe "assimilate" do
+    test "any/0" do
+      assert {:ok, "hi"} == assimilate(any(), "hi")
+    end
+
     test "str/0" do
       schematic = str()
       input = "lsp is kool"
