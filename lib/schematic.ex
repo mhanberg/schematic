@@ -256,8 +256,8 @@ defmodule Schematic do
   end
 
   def map(opts) when is_list(opts) do
-    key_schematic = Keyword.get(opts, :keys, raw(&Function.identity/1, message: ""))
-    value_schematic = Keyword.get(opts, :values, raw(&Function.identity/1, message: ""))
+    key_schematic = Keyword.get(opts, :keys, any())
+    value_schematic = Keyword.get(opts, :values, any())
 
     %Schematic{
       kind: "map",
