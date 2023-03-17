@@ -6,7 +6,7 @@
 - transform option for `raw` schematic
 - `any` schematic
 - `tuple` schematic
-- `map` schematic can take a `:keys` and `:values` schematic to assimilate any key that matches the schematic 
+- `map` schematic can take a `:keys` and `:values` schematic to assimilate any key that matches the schematic
 
 ## v0.0.1
 
