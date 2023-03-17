@@ -161,6 +161,50 @@ defmodule Schematic do
     }
   end
 
+  def tuple(schematics, opts \\ []) do
+    message = "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message)}]"
+    from = Keyword.get(opts, :from, :tuple)
+
+    {condition, to_list} =
+      case from do
+        :list ->
+          {&is_list/1, &Function.identity/1}
+
+        :tuple ->
+          {&is_tuple/1, &Tuple.to_list/1}
+      end
+
+    %Schematic{
+      kind: "tuple",
+      message: message,
+      assimilate: fn input ->
+        if condition.(input) do
+          input
+          |> to_list.()
+          |> Enum.with_index()
+          |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
+            case(assimilate(Enum.at(schematics, idx), el)) do
+              {:ok, output} ->
+                {:cont, {:ok, [output | acc]}}
+
+              {:error, _error} ->
+                {:halt, {:error, ~s|expected #{message}|}}
+            end
+          end)
+          |> then(fn
+            {:ok, result} ->
+              {:ok, result |> Enum.reverse() |> List.to_tuple()}
+
+            error ->
+              error
+          end)
+        else
+          {:error, ~s|expected a list|}
+        end
+      end
+    }
+  end
+
   def map(blueprint \\ %{})
 
   def map(blueprint) when is_map(blueprint) do

@@ -54,6 +54,20 @@ defmodule SchematicTest do
       assert {:ok, input} == assimilate(schematic, input)
     end
 
+    test "tuple/2" do
+      schematic = tuple([int(), str(), map(%{alice: any()})])
+
+      input = {1, "2", %{alice: :bob}}
+      assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+    end
+
+    test "tuple/2 from list" do
+      schematic = tuple([int(), str(), map(%{alice: any()})], from: :list)
+
+      input = [1, "2", %{alice: :bob}]
+      assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+    end
+
     test "oneof/1" do
       schematic = oneof([int(), str()])
       input = 1
