@@ -408,13 +408,7 @@ defmodule SchematicTest do
       schematic =
         map(
           keys:
-            raw(
-              fn n ->
-                case n do
-                  n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
-                  _ -> false
-                end
-              end,
+            raw(fn n -> is_binary(n) and match?({_, ""}, Integer.parse(n)) end,
               transform: &String.to_integer/1
             ),
           values: str()
