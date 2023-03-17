@@ -59,6 +59,11 @@ defmodule SchematicTest do
 
       input = {1, "2", %{alice: :bob}}
       assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+
+      input = {"1", 3, []}
+
+      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+               assimilate(schematic, input)
     end
 
     test "tuple/2 from list" do
@@ -66,6 +71,11 @@ defmodule SchematicTest do
 
       input = [1, "2", %{alice: :bob}]
       assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+
+      input = ["1", 3, []]
+
+      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+               assimilate(schematic, input)
     end
 
     test "oneof/1" do
