@@ -240,6 +240,17 @@ defmodule SchematicTest do
       assert {:error, "must be greater than 10"} = assimilate(schematic, 9)
     end
 
+    test "func/2 with :transform option" do
+      schematic =
+        func(fn n -> is_list(n) and length(n) == 3 end,
+          message: "must be a tuple of size 3",
+          transform: &List.to_tuple/1
+        )
+
+      assert {:ok, {"one", "two", 3}} = assimilate(schematic, ["one", "two", 3])
+      assert {:error, "must be a tuple of size 3"} = assimilate(schematic, ["not", "big"])
+    end
+
     test "all/1" do
       schematic =
         all([
@@ -371,6 +382,27 @@ defmodule SchematicTest do
         )
 
       assert {:ok, %{"6" => "has a string key that parses as an integer"}} ==
+               assimilate(schematic, %{
+                 "6" => "has a string key that parses as an integer",
+                 1 => "bam"
+               })
+
+      schematic =
+        map(
+          keys:
+            func(
+              fn n ->
+                case n do
+                  n when is_binary(n) -> match?({_, ""}, Integer.parse(n))
+                  _ -> false
+                end
+              end,
+              transform: &String.to_integer/1
+            ),
+          values: str()
+        )
+
+      assert {:ok, %{6 => "has a string key that parses as an integer"}} ==
                assimilate(schematic, %{
                  "6" => "has a string key that parses as an integer",
                  1 => "bam"
