@@ -157,6 +157,11 @@ defmodule Schematic do
         else
           {:error, ~s|expected a list|}
         end
+      end,
+      dump: fn input ->
+        for i <- input do
+          dump(schematic, i)
+        end
       end
     }
   end

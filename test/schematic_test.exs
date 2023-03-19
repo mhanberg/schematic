@@ -458,6 +458,13 @@ defmodule SchematicTest do
       assert %{"baz" => %{"one" => "yo"}} ==
                dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
     end
+
+    test "works with lists" do
+      schematic = list(map(%{{"camelCase", :snake_case} => str()}))
+
+      assert {:ok, [%{snake_case: "foo!"}]} = unify(schematic, [%{"camelCase" => "foo!"}])
+      assert [%{"camelCase" => "foo!"}] == dump(schematic, [%{snake_case: "foo!"}])
+    end
   end
 
   describe "dispatch" do
