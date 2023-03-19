@@ -267,7 +267,7 @@ defmodule Schematic do
            key = with %OptionalKey{key: key} <- bpk, do: key
            {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
 
-           {from_key, input[to_key]}
+           {from_key, Map.get(input, to_key)}
          end)}
       end
     }
@@ -318,22 +318,25 @@ defmodule Schematic do
 
   def schema(mod, schematic) do
     schematic =
-      Map.new(schematic, fn
-        {k, v} when is_atom(k) ->
-          {{to_string(k), k}, v}
+      map(
+        Map.new(schematic, fn
+          {k, v} when is_atom(k) ->
+            {{to_string(k), k}, v}
 
-        kv ->
-          kv
-      end)
+          kv ->
+            kv
+        end)
+      )
 
     %Schematic{
       kind: "map",
       message: "a %#{String.replace(to_string(mod), "Elixir.", "")}{}",
       unify: fn input ->
-        with {:ok, output} <- unify(map(schematic), input) do
+        with {:ok, output} <- unify(schematic, input) do
           {:ok, struct(mod, output)}
         end
-      end
+      end,
+      dump: &dump(schematic, &1)
     }
   end
 

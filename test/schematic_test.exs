@@ -448,6 +448,13 @@ defmodule SchematicTest do
       assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
     end
+
+    test "works with schema" do
+      schematic = schema(SchematicTest.S3, %{baz: str()})
+
+      assert {:ok, %SchematicTest.S3{baz: "baz"}} == unify(schematic, %{"baz" => "baz"})
+      assert {:ok, %{"baz" => "baz"}} == dump(schematic, %SchematicTest.S3{baz: "baz"})
+    end
   end
 
   describe "dispatch" do
