@@ -7,84 +7,84 @@ defmodule SchematicTest do
     defstruct [:jsonrpc, :method, :params, :id]
   end
 
-  describe "assimilate" do
+  describe "unify" do
     test "any/0" do
-      assert {:ok, "hi"} == assimilate(any(), "hi")
+      assert {:ok, "hi"} == unify(any(), "hi")
     end
 
     test "str/0" do
       schematic = str()
       input = "lsp is kool"
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "str/1" do
       schematic = str("lsp is kool")
       input = "lsp is kool"
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "int/0" do
       schematic = int()
       input = 999
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "int/1" do
       schematic = int(999)
       input = 999
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "map/0" do
       schematic = map()
       input = %{}
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "list/0" do
       schematic = list()
       input = ["hello", "there"]
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "list/1" do
       schematic = list(int())
       input = [1, 2, 3]
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "tuple/2" do
       schematic = tuple([int(), str(), map(%{alice: any()})])
 
       input = {1, "2", %{alice: :bob}}
-      assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+      assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
 
       input = {"1", 3, []}
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
-               assimilate(schematic, input)
+               unify(schematic, input)
     end
 
     test "tuple/2 from list" do
       schematic = tuple([int(), str(), map(%{alice: any()})], from: :list)
 
       input = [1, "2", %{alice: :bob}]
-      assert {:ok, {1, "2", %{alice: :bob}}} == assimilate(schematic, input)
+      assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
 
       input = ["1", 3, []]
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
-               assimilate(schematic, input)
+               unify(schematic, input)
     end
 
     test "oneof/1" do
       schematic = oneof([int(), str()])
       input = 1
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
 
       input = "hi"
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "map/1" do
@@ -94,7 +94,7 @@ defmodule SchematicTest do
         })
 
       input = %{"foo" => "hi there!", "bar" => []}
-      assert {:ok, %{"foo" => "hi there!"}} == assimilate(schematic, input)
+      assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
     end
 
     test "complex" do
@@ -129,7 +129,7 @@ defmodule SchematicTest do
         }
       }
 
-      assert {:ok, input} == assimilate(schematic, input)
+      assert {:ok, input} == unify(schematic, input)
     end
 
     test "complex transformer" do
@@ -176,7 +176,7 @@ defmodule SchematicTest do
                     }
                   }
                 }
-              }} == assimilate(schematic, input)
+              }} == unify(schematic, input)
     end
 
     defmodule S1 do
@@ -243,29 +243,29 @@ defmodule SchematicTest do
                     }
                   }
                 }
-              }} == assimilate(schematic, input)
+              }} == unify(schematic, input)
     end
 
     test "bool/1" do
       schematic = bool()
 
-      assert {:ok, true} = assimilate(schematic, true)
-      assert {:ok, false} = assimilate(schematic, false)
+      assert {:ok, true} = unify(schematic, true)
+      assert {:ok, false} = unify(schematic, false)
 
       schematic = bool(true)
-      assert {:ok, true} = assimilate(schematic, true)
-      assert {:error, "expected true"} = assimilate(schematic, false)
+      assert {:ok, true} = unify(schematic, true)
+      assert {:error, "expected true"} = unify(schematic, false)
 
       schematic = bool(false)
-      assert {:ok, false} = assimilate(schematic, false)
-      assert {:error, "expected false"} = assimilate(schematic, true)
+      assert {:ok, false} = unify(schematic, false)
+      assert {:error, "expected false"} = unify(schematic, true)
     end
 
     test "raw/2" do
       schematic = raw(fn n -> n > 10 end, message: "must be greater than 10")
 
-      assert {:ok, 12} = assimilate(schematic, 12)
-      assert {:error, "must be greater than 10"} = assimilate(schematic, 9)
+      assert {:ok, 12} = unify(schematic, 12)
+      assert {:error, "must be greater than 10"} = unify(schematic, 9)
     end
 
     test "raw/2 with :transform option" do
@@ -275,8 +275,8 @@ defmodule SchematicTest do
           transform: &List.to_tuple/1
         )
 
-      assert {:ok, {"one", "two", 3}} = assimilate(schematic, ["one", "two", 3])
-      assert {:error, "must be a tuple of size 3"} = assimilate(schematic, ["not", "big"])
+      assert {:ok, {"one", "two", 3}} = unify(schematic, ["one", "two", 3])
+      assert {:error, "must be a tuple of size 3"} = unify(schematic, ["not", "big"])
     end
 
     test "all/1" do
@@ -287,12 +287,12 @@ defmodule SchematicTest do
           raw(&(&1 < 20), message: "must be less than 20")
         ])
 
-      assert {:ok, 12} = assimilate(schematic, 12)
-      assert {:error, ["must be greater than 10"]} = assimilate(schematic, 9)
-      assert {:error, ["must be less than 20"]} = assimilate(schematic, 21)
+      assert {:ok, 12} = unify(schematic, 12)
+      assert {:error, ["must be greater than 10"]} = unify(schematic, 9)
+      assert {:error, ["must be less than 20"]} = unify(schematic, 21)
 
       assert {:error, ["expected an integer", "must be less than 20"]} =
-               assimilate(schematic, "hi")
+               unify(schematic, "hi")
     end
   end
 
@@ -350,7 +350,7 @@ defmodule SchematicTest do
                   }
                 },
                 "foo" => "expected either a string, an integer, or a list"
-              }} == assimilate(schematic, input)
+              }} == unify(schematic, input)
     end
 
     test "nullable values" do
@@ -359,9 +359,9 @@ defmodule SchematicTest do
           type: oneof([null(), int()])
         })
 
-      assert {:ok, %{type: 10}} == assimilate(schematic, %{type: 10})
-      assert {:ok, %{type: nil}} == assimilate(schematic, %{type: nil})
-      assert {:ok, %{type: nil}} == assimilate(schematic, %{name: "bob"})
+      assert {:ok, %{type: 10}} == unify(schematic, %{type: 10})
+      assert {:ok, %{type: nil}} == unify(schematic, %{type: nil})
+      assert {:ok, %{type: nil}} == unify(schematic, %{name: "bob"})
     end
 
     test "optional keys" do
@@ -371,31 +371,31 @@ defmodule SchematicTest do
           type: int()
         })
 
-      assert {:ok, %{type: 10}} == assimilate(schematic, %{type: 10})
-      assert {:ok, %{type: 10, name: "bob"}} == assimilate(schematic, %{type: 10, name: "bob"})
+      assert {:ok, %{type: 10}} == unify(schematic, %{type: 10})
+      assert {:ok, %{type: 10, name: "bob"}} == unify(schematic, %{type: 10, name: "bob"})
 
       assert {:error, %{name: "expected a string"}} ==
-               assimilate(schematic, %{type: 10, name: 10})
+               unify(schematic, %{type: 10, name: 10})
     end
 
     test "empty map" do
       schematic = map()
 
-      assert {:ok, %{}} == assimilate(schematic, %{"foo" => 1})
+      assert {:ok, %{}} == unify(schematic, %{"foo" => 1})
     end
 
     test "key types" do
       schematic = map(keys: str(), values: str())
 
-      assert {:ok, %{"foo" => "one"}} == assimilate(schematic, %{"foo" => "one", 1 => "bam"})
+      assert {:ok, %{"foo" => "one"}} == unify(schematic, %{"foo" => "one", 1 => "bam"})
 
       assert {:error, %{"foo" => "expected a string"}} ==
-               assimilate(schematic, %{"foo" => 1, 1 => "bam"})
+               unify(schematic, %{"foo" => 1, 1 => "bam"})
 
       schematic =
         map(keys: all([int(), raw(fn n -> n > 5 end, message: "greater than 5")]), values: str())
 
-      assert {:ok, %{6 => "6"}} == assimilate(schematic, %{6 => "6", 1 => "bam"})
+      assert {:ok, %{6 => "6"}} == unify(schematic, %{6 => "6", 1 => "bam"})
 
       schematic =
         map(
@@ -410,7 +410,7 @@ defmodule SchematicTest do
         )
 
       assert {:ok, %{"6" => "has a string key that parses as an integer"}} ==
-               assimilate(schematic, %{
+               unify(schematic, %{
                  "6" => "has a string key that parses as an integer",
                  1 => "bam"
                })
@@ -425,7 +425,7 @@ defmodule SchematicTest do
         )
 
       assert {:ok, %{6 => "has a string key that parses as an integer"}} ==
-               assimilate(schematic, %{
+               unify(schematic, %{
                  "6" => "has a string key that parses as an integer",
                  1 => "bam"
                })

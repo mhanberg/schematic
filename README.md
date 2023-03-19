@@ -38,7 +38,7 @@ input = %{
   }
 }
 
-assimilate(schematic, input)
+unify(schematic, input)
 
 # returns...
 

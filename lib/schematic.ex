@@ -1,5 +1,5 @@
 defmodule Schematic do
-  defstruct [:assimilate, :kind, :message]
+  defstruct [:unify, :kind, :message]
 
   defmodule OptionalKey do
     @enforce_keys [:key]
@@ -7,14 +7,14 @@ defmodule Schematic do
   end
 
   def any() do
-    %Schematic{kind: :any, message: "", assimilate: fn x -> {:ok, x} end}
+    %Schematic{kind: :any, message: "", unify: fn x -> {:ok, x} end}
   end
 
   def null() do
     %Schematic{
       kind: :null,
       message: "null",
-      assimilate: fn
+      unify: fn
         nil -> {:ok, nil}
         _input -> {:error, "expected null"}
       end
@@ -32,7 +32,7 @@ defmodule Schematic do
     %Schematic{
       kind: "boolean",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         # FIXME: this is ugly
         cond do
           is_boolean(literal) ->
@@ -63,7 +63,7 @@ defmodule Schematic do
     %Schematic{
       kind: "string",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         # FIXME: this is ugly
         cond do
           is_binary(literal) ->
@@ -94,7 +94,7 @@ defmodule Schematic do
     %Schematic{
       kind: "integer",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         # FIXME: this is ugly
         cond do
           is_integer(literal) ->
@@ -120,7 +120,7 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         if is_list(input) do
           {:ok, input}
         else
@@ -136,10 +136,10 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         if is_list(input) do
           Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
-            case assimilate(schematic, el) do
+            case unify(schematic, el) do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
@@ -177,13 +177,13 @@ defmodule Schematic do
     %Schematic{
       kind: "tuple",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         if condition.(input) do
           input
           |> to_list.()
           |> Enum.with_index()
           |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
-            case(assimilate(Enum.at(schematics, idx), el)) do
+            case(unify(Enum.at(schematics, idx), el)) do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
@@ -211,7 +211,7 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: "a map",
-      assimilate: fn input ->
+      unify: fn input ->
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
 
@@ -226,7 +226,7 @@ defmodule Schematic do
               if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
                 [{:ok, acc}, {:errors, errors}]
               else
-                case assimilate(schematic, input[from_key]) do
+                case unify(schematic, input[from_key]) do
                   {:ok, output} ->
                     acc =
                       acc
@@ -262,15 +262,15 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: "a map",
-      assimilate: fn input ->
+      unify: fn input ->
         if is_map(input) do
           Enum.reduce(
             Map.keys(input),
             [ok: %{}, errors: %{}],
             fn input_key, [{:ok, acc}, {:errors, errors}] ->
-              case assimilate(key_schematic, input_key) do
+              case unify(key_schematic, input_key) do
                 {:ok, key_output} ->
-                  case assimilate(value_schematic, input[input_key]) do
+                  case unify(value_schematic, input[input_key]) do
                     {:ok, value_output} ->
                       [{:ok, Map.put(acc, key_output, value_output)}, {:errors, errors}]
 
@@ -311,8 +311,8 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: "a %#{String.replace(to_string(mod), "Elixir.", "")}{}",
-      assimilate: fn input ->
-        with {:ok, output} <- assimilate(map(schematic), input) do
+      unify: fn input ->
+        with {:ok, output} <- unify(map(schematic), input) do
           {:ok, struct(mod, output)}
         end
       end
@@ -326,7 +326,7 @@ defmodule Schematic do
     %Schematic{
       kind: "function",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         if function.(input) do
           {:ok, transformer.(input)}
         else
@@ -342,10 +342,10 @@ defmodule Schematic do
     %Schematic{
       kind: "all",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         errors =
           for schematic <- schematics,
-              {result, message} = assimilate(schematic, input),
+              {result, message} = unify(schematic, input),
               result == :error do
             message
           end
@@ -365,10 +365,10 @@ defmodule Schematic do
     %Schematic{
       kind: "oneof",
       message: message,
-      assimilate: fn input ->
+      unify: fn input ->
         inquiry =
           Enum.find_value(schematics, fn schematic ->
-            with {:error, _} <- assimilate(schematic, input) do
+            with {:error, _} <- unify(schematic, input) do
               false
             end
           end)
@@ -389,8 +389,8 @@ defmodule Schematic do
     end)
   end
 
-  def assimilate(schematic, input) do
-    schematic.assimilate.(input)
+  def unify(schematic, input) do
+    schematic.unify.(input)
   end
 
   def optional(key) do
