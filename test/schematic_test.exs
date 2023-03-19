@@ -440,13 +440,39 @@ defmodule SchematicTest do
           {"camelCase3", :snake_case3} => oneof([null(), str()])
         })
 
-      assert {:ok, %{snake_case: "foo!"} = output} = unify(schematic, %{"camelCase" => "foo!"})
+      assert {:ok, %{snake_case: "foo!"}} = unify(schematic, %{"camelCase" => "foo!"})
 
       assert {:ok, %{"camelCase" => "foo!", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!"})
 
       assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
+    end
+  end
+
+  describe "dispatch" do
+    test "oneof can dispatch to a specific schematic with a closure" do
+      schematic =
+        oneof(fn
+          %{type: "foo"} ->
+            map(%{type: str("foo")})
+
+          %{type: "bar"} ->
+            map(%{type: str("bar")})
+
+          %{type: "baz"} ->
+            map(%{type: str("baz")})
+
+          %{type: type} ->
+            {:error, ~s|unexpected record type "#{type}"|}
+
+          _ ->
+            map(%{type: str()})
+        end)
+
+      assert {:ok, %{type: "bar"}} == unify(schematic, %{type: "bar"})
+      assert {:error, %{type: "expected a string"}} == unify(schematic, %{typo: "doink"})
+      assert {:error, ~s|unexpected record type "doink"|} == unify(schematic, %{type: "doink"})
     end
   end
 end

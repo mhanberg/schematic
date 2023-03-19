@@ -398,6 +398,17 @@ defmodule Schematic do
     }
   end
 
+  def oneof(dispatch) when is_function(dispatch) do
+    %Schematic{
+      kind: "oneof",
+      unify: fn input ->
+        with %Schematic{} = schematic <- dispatch.(input) do
+          unify(schematic, input)
+        end
+      end
+    }
+  end
+
   defp sentence_join(items, joiner, mapper) do
     length = length(items)
     item_joiner = if length > 2, do: ", ", else: " "
