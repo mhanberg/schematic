@@ -310,7 +310,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
-      message: "a map",
+      message: "a %#{String.replace(to_string(mod), "Elixir.", "")}{}",
       assimilate: fn input ->
         with {:ok, output} <- assimilate(map(schematic), input) do
           {:ok, struct(mod, output)}
