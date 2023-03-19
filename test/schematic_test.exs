@@ -442,18 +442,21 @@ defmodule SchematicTest do
 
       assert {:ok, %{snake_case: "foo!"}} = unify(schematic, %{"camelCase" => "foo!"})
 
-      assert {:ok, %{"camelCase" => "foo!", "camelCase3" => nil}} ==
+      assert %{"camelCase" => "foo!", "camelCase3" => nil} ==
                dump(schematic, %{snake_case: "foo!"})
 
-      assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
+      assert %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil} ==
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
     end
 
     test "works with schema" do
-      schematic = schema(SchematicTest.S3, %{baz: str()})
+      schematic = schema(SchematicTest.S3, %{baz: schema(SchematicTest.S4, %{one: str()})})
 
-      assert {:ok, %SchematicTest.S3{baz: "baz"}} == unify(schematic, %{"baz" => "baz"})
-      assert {:ok, %{"baz" => "baz"}} == dump(schematic, %SchematicTest.S3{baz: "baz"})
+      assert {:ok, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}}} ==
+               unify(schematic, %{"baz" => %{"one" => "yo"}})
+
+      assert %{"baz" => %{"one" => "yo"}} ==
+               dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
     end
   end
 
