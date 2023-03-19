@@ -1,5 +1,5 @@
 defmodule Schematic do
-  defstruct [:unify, :kind, :message]
+  defstruct [:unify, :kind, :message, dump: &Schematic.default_dump/1]
 
   defmodule OptionalKey do
     @enforce_keys [:key]
@@ -251,6 +251,24 @@ defmodule Schematic do
         else
           {:error, "expected a map"}
         end
+      end,
+      dump: fn input ->
+        bp_keys = Map.keys(blueprint)
+
+        {:ok,
+         bp_keys
+         |> Enum.reject(fn bpk ->
+           key = with %OptionalKey{key: key} <- bpk, do: key
+           {_from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
+
+           not Map.has_key?(input, to_key) and match?(%OptionalKey{}, bpk)
+         end)
+         |> Map.new(fn bpk ->
+           key = with %OptionalKey{key: key} <- bpk, do: key
+           {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
+
+           {from_key, input[to_key]}
+         end)}
       end
     }
   end
@@ -392,6 +410,12 @@ defmodule Schematic do
   def unify(schematic, input) do
     schematic.unify.(input)
   end
+
+  def dump(schematic, input) do
+    schematic.dump.(input)
+  end
+
+  def default_dump(input), do: {:ok, input}
 
   def optional(key) do
     %OptionalKey{key: key}

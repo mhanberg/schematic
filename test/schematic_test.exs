@@ -291,8 +291,7 @@ defmodule SchematicTest do
       assert {:error, ["must be greater than 10"]} = unify(schematic, 9)
       assert {:error, ["must be less than 20"]} = unify(schematic, 21)
 
-      assert {:error, ["expected an integer", "must be less than 20"]} =
-               unify(schematic, "hi")
+      assert {:error, ["expected an integer", "must be less than 20"]} = unify(schematic, "hi")
     end
   end
 
@@ -429,6 +428,25 @@ defmodule SchematicTest do
                  "6" => "has a string key that parses as an integer",
                  1 => "bam"
                })
+    end
+  end
+
+  describe "dump/1" do
+    test "dumps map with key conversions" do
+      schematic =
+        map(%{
+          {"camelCase", :snake_case} => str(),
+          optional({"camelCase2", :snake_case2}) => str(),
+          {"camelCase3", :snake_case3} => oneof([null(), str()])
+        })
+
+      assert {:ok, %{snake_case: "foo!"} = output} = unify(schematic, %{"camelCase" => "foo!"})
+
+      assert {:ok, %{"camelCase" => "foo!", "camelCase3" => nil}} ==
+               dump(schematic, %{snake_case: "foo!"})
+
+      assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
+               dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
     end
   end
 end
