@@ -1,18 +1,27 @@
 defmodule Schematic do
   defstruct [:unify, :kind, :message, dump: &Function.identity/1]
 
+  @opaque t :: %__MODULE__{
+            unify: (term() -> {:ok, term()} | {:error, String.t() | [String.t()]}),
+            dump: (term() -> term()),
+            kind: String.t(),
+            message: String.t() | nil
+          }
+
   defmodule OptionalKey do
     @enforce_keys [:key]
     defstruct [:key]
   end
 
+  @spec any() :: t()
   def any() do
-    %Schematic{kind: :any, message: "", unify: fn x -> {:ok, x} end}
+    %Schematic{kind: "any", unify: fn x -> {:ok, x} end}
   end
 
+  @spec null() :: t()
   def null() do
     %Schematic{
-      kind: :null,
+      kind: "null",
       message: "null",
       unify: fn
         nil -> {:ok, nil}
@@ -21,6 +30,7 @@ defmodule Schematic do
     }
   end
 
+  @spec bool(boolean() | nil) :: t()
   def bool(literal \\ nil) do
     message =
       if is_boolean(literal) do
@@ -52,6 +62,7 @@ defmodule Schematic do
     }
   end
 
+  @spec str(String.t() | nil) :: t()
   def str(literal \\ nil) do
     message =
       if literal do
@@ -83,6 +94,7 @@ defmodule Schematic do
     }
   end
 
+  @spec int(integer() | nil) :: t()
   def int(literal \\ nil) do
     message =
       if literal do
@@ -114,6 +126,7 @@ defmodule Schematic do
     }
   end
 
+  @spec list() :: t()
   def list() do
     message = "a list"
 
@@ -130,6 +143,7 @@ defmodule Schematic do
     }
   end
 
+  @spec list(t()) :: t()
   def list(schematic) do
     message = "a list of #{schematic.message}"
 
@@ -166,6 +180,7 @@ defmodule Schematic do
     }
   end
 
+  @spec tuple([t()], [tuple()]) :: t()
   def tuple(schematics, opts \\ []) do
     message = "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message)}]"
     from = Keyword.get(opts, :from, :tuple)
@@ -210,6 +225,7 @@ defmodule Schematic do
     }
   end
 
+  @spec map(map() | [tuple()]) :: t()
   def map(blueprint \\ %{})
 
   def map(blueprint) when is_map(blueprint) do
@@ -320,6 +336,7 @@ defmodule Schematic do
     }
   end
 
+  @spec schema(atom(), map()) :: t()
   def schema(mod, schematic) do
     schematic =
       map(
@@ -344,6 +361,7 @@ defmodule Schematic do
     }
   end
 
+  @spec raw((any() -> boolean()), [tuple()]) :: t()
   def raw(function, opts \\ []) do
     message = Keyword.get(opts, :message, "is invalid")
     transformer = Keyword.get(opts, :transform, &Function.identity/1)
@@ -361,6 +379,7 @@ defmodule Schematic do
     }
   end
 
+  @spec all([t()]) :: t()
   def all(schematics) when is_list(schematics) do
     message = Enum.map(schematics, & &1.message)
 
@@ -384,6 +403,7 @@ defmodule Schematic do
     }
   end
 
+  @spec oneof([t()] | (any -> t())) :: t()
   def oneof(schematics) when is_list(schematics) do
     message = "either #{sentence_join(schematics, "or", & &1.message)}"
 
@@ -425,14 +445,17 @@ defmodule Schematic do
     end)
   end
 
+  @spec unify(t(), any()) :: any()
   def unify(schematic, input) do
     schematic.unify.(input)
   end
 
+  @spec dump(t(), any()) :: any()
   def dump(schematic, input) do
     schematic.dump.(input)
   end
 
+  @spec optional(any) :: %OptionalKey{key: any()}
   def optional(key) do
     %OptionalKey{key: key}
   end
