@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.3
+
+- fix: slightly better error message for schemas
+- feat: dump
+- feat: dispatch to a schematic with a function using oneof
+- refactor!: rename assimilate to unify
+
 ## v0.0.2
 
 - rename `func` to `raw`
