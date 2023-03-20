@@ -6,7 +6,7 @@ defmodule Schematic.MixProject do
       app: :schematic,
       description: "Data validation and transformation",
       package: package(),
-      version: "0.0.3",
+      version: "0.0.4",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       source_url: "https://github.com/mhanberg/schematic",

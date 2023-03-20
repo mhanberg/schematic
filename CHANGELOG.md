@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.4
+
+- fixed the typespecs
+
 ## v0.0.3
 
 - fix: slightly better error message for schemas
