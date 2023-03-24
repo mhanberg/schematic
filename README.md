@@ -62,7 +62,7 @@ unify(schematic, input)
 ```elixir
 def deps do
   [
-    {:schematic, "~> 0.0.4"}
+    {:schematic, "~> 0.0.5"}
   ]
 end
 ```

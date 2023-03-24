@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.5
+
+- fix: handle nil message in oneof schematic
+
 ## v0.0.4
 
 - fixed the typespecs
