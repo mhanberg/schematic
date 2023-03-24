@@ -180,7 +180,7 @@ defmodule Schematic do
     }
   end
 
-  @spec tuple([t()], [tuple()]) :: t()
+  @spec tuple([t()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
     message = "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message)}]"
     from = Keyword.get(opts, :from, :tuple)
@@ -225,7 +225,7 @@ defmodule Schematic do
     }
   end
 
-  @spec map(map() | [tuple()]) :: t()
+  @spec map(map() | Keyword.t()) :: t()
   def map(blueprint \\ %{})
 
   def map(blueprint) when is_map(blueprint) do
@@ -441,7 +441,7 @@ defmodule Schematic do
     item_joiner = if length > 2, do: ", ", else: " "
 
     Enum.map_join(Enum.with_index(items), item_joiner, fn {item, idx} ->
-      if idx == length - 1, do: joiner <> " " <> mapper.(item), else: mapper.(item)
+      if idx == length - 1, do: joiner <> " " <> (mapper.(item) || ""), else: mapper.(item)
     end)
   end
 
