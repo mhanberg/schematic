@@ -29,6 +29,11 @@ defmodule Schematic do
     }
   end
 
+  @spec nullable(t()) :: t()
+  def nullable(schematic) do
+    oneof([null(), schematic])
+  end
+
   @spec bool(boolean() | nil) :: t()
   def bool(literal \\ nil) do
     message =
