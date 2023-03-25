@@ -262,7 +262,7 @@ defmodule SchematicTest do
     end
 
     test "raw/2" do
-      schematic = raw(fn n -> n > 10 end, message: "must be greater than 10")
+      schematic = raw(fn n, _ -> n > 10 end, message: "must be greater than 10")
 
       assert {:ok, 12} = unify(schematic, 12)
       assert {:error, "must be greater than 10"} = unify(schematic, 9)
@@ -270,21 +270,32 @@ defmodule SchematicTest do
 
     test "raw/2 with :transform option" do
       schematic =
-        raw(fn n -> is_list(n) and length(n) == 3 end,
+        raw(
+          fn
+            n, :to -> is_list(n) and length(n) == 3
+            n, :from -> is_tuple(n) and tuple_size(n) == 3
+          end,
           message: "must be a tuple of size 3",
-          transform: &List.to_tuple/1
+          transform: fn
+            input, :to ->
+              List.to_tuple(input)
+
+            input, :from ->
+              Tuple.to_list(input)
+          end
         )
 
       assert {:ok, {"one", "two", 3}} = unify(schematic, ["one", "two", 3])
       assert {:error, "must be a tuple of size 3"} = unify(schematic, ["not", "big"])
+      assert {:ok, ["one", "two", 3]} = dump(schematic, {"one", "two", 3})
     end
 
     test "all/1" do
       schematic =
         all([
           int(),
-          raw(&(&1 > 10), message: "must be greater than 10"),
-          raw(&(&1 < 20), message: "must be less than 20")
+          raw(fn i, _ -> i > 10 end, message: "must be greater than 10"),
+          raw(fn i, _ -> i < 20 end, message: "must be less than 20")
         ])
 
       assert {:ok, 12} = unify(schematic, 12)
@@ -392,7 +403,10 @@ defmodule SchematicTest do
                unify(schematic, %{"foo" => 1, 1 => "bam"})
 
       schematic =
-        map(keys: all([int(), raw(fn n -> n > 5 end, message: "greater than 5")]), values: str())
+        map(
+          keys: all([int(), raw(fn n -> n > 5 end, message: "greater than 5")]),
+          values: str()
+        )
 
       assert {:ok, %{6 => "6"}} == unify(schematic, %{6 => "6", 1 => "bam"})
 
@@ -431,7 +445,7 @@ defmodule SchematicTest do
     end
   end
 
-  describe "dump/1" do
+  describe "dump" do
     test "dumps map with key conversions" do
       schematic =
         map(%{
@@ -442,10 +456,10 @@ defmodule SchematicTest do
 
       assert {:ok, %{snake_case: "foo!"}} = unify(schematic, %{"camelCase" => "foo!"})
 
-      assert %{"camelCase" => "foo!", "camelCase3" => nil} ==
+      assert {:ok, %{"camelCase" => "foo!", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!"})
 
-      assert %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil} ==
+      assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
     end
 
@@ -455,15 +469,32 @@ defmodule SchematicTest do
       assert {:ok, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}}} ==
                unify(schematic, %{"baz" => %{"one" => "yo"}})
 
-      assert %{"baz" => %{"one" => "yo"}} ==
+      assert {:ok, %{"baz" => %{"one" => "yo"}}} ==
                dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
+    end
+
+    test "works with oneof" do
+      schematic =
+        map(%{
+          {"oneTwo", :one_two} =>
+            oneof([
+              map(%{{"threeFour", :three_four} => str()}),
+              map(%{{"fiveSix", :five_six} => int()})
+            ])
+        })
+
+      assert {:ok, %{one_two: %{five_six: 1}}} ==
+               unify(schematic, %{"oneTwo" => %{"fiveSix" => 1}})
+
+      assert {:ok, %{"oneTwo" => %{"fiveSix" => 1}}} ==
+               dump(schematic, %{one_two: %{five_six: 1}})
     end
 
     test "works with lists" do
       schematic = list(map(%{{"camelCase", :snake_case} => str()}))
 
       assert {:ok, [%{snake_case: "foo!"}]} = unify(schematic, [%{"camelCase" => "foo!"}])
-      assert [%{"camelCase" => "foo!"}] == dump(schematic, [%{snake_case: "foo!"}])
+      assert {:ok, [%{"camelCase" => "foo!"}]} == dump(schematic, [%{snake_case: "foo!"}])
     end
   end
 
