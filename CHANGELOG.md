@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.0.6
+
+- dump/1 now returns and ok/error tuple
+- nullable/1 schematic
+
 ## v0.0.5
 
 - fix: handle nil message in oneof schematic
