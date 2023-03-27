@@ -7,6 +7,14 @@ defmodule Schematic do
             message: String.t() | nil
           }
 
+  unless macro_exported?(Kernel, :then, 2) do
+    defmacrop then(value, fun) do
+      quote do
+        unquote(fun).(unquote(value))
+      end
+    end
+  end
+
   defmodule OptionalKey do
     @enforce_keys [:key]
     defstruct [:key]
@@ -357,7 +365,7 @@ defmodule Schematic do
     }
   end
 
-  defp struct?(input, mod) when is_struct(input, mod) do
+  defp struct?(%struct{} = input, mod) when struct == mod do
     {:ok, input}
   end
 
