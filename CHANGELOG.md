@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.7
+
+- Support Elixir >= v1.10
+
 ## v0.0.6
 
 - dump/1 now returns and ok/error tuple
