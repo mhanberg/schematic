@@ -11,7 +11,7 @@ defmodule SchematicTest do
     defstruct [:method, :body]
   end
 
-  doctest Schematic
+  doctest Schematic, tags: [:doctest]
 
   describe "unify" do
     test "any/0" do
