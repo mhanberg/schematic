@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.8
+
+- docs
+
 ## v0.0.7
 
 - Support Elixir >= v1.10
