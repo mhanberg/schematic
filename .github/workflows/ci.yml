@@ -67,7 +67,7 @@ jobs:
       run: mix deps.get
 
     - name: Run Doctests
-      run: mix test --only doctests
+      run: mix test --only doctest
 
   formatter:
     runs-on: ubuntu-latest
