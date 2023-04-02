@@ -11,7 +11,9 @@ defmodule SchematicTest do
     defstruct [:method, :body]
   end
 
-  doctest Schematic, tags: [:doctest]
+  unless Version.match?(System.version(), "~> 1.10.0") do
+    doctest Schematic, tags: [doctest: true]
+  end
 
   describe "unify" do
     test "any/0" do
