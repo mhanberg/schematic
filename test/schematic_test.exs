@@ -7,6 +7,12 @@ defmodule SchematicTest do
     defstruct [:jsonrpc, :method, :params, :id]
   end
 
+  defmodule HTTPRequest do
+    defstruct [:method, :body]
+  end
+
+  doctest Schematic
+
   describe "unify" do
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
@@ -391,7 +397,7 @@ defmodule SchematicTest do
     test "empty map" do
       schematic = map()
 
-      assert {:ok, %{}} == unify(schematic, %{"foo" => 1})
+      assert {:ok, %{"foo" => 1}} == unify(schematic, %{"foo" => 1})
     end
 
     test "key types" do

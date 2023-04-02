@@ -1,6 +1,17 @@
 defmodule Schematic do
+  @external_resource "README.md"
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
+
   defstruct [:unify, :kind, :message]
 
+  @typedoc """
+  The Schematic data structure.
+
+  This data structure is meant to be opaque to the user, but you can create your own for super niche use cases. But backwards compatiblility of this data structure is not guaranteed.
+  """
   @opaque t :: %__MODULE__{
             unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
             kind: String.t(),
@@ -16,15 +27,44 @@ defmodule Schematic do
   end
 
   defmodule OptionalKey do
+    @moduledoc false
+
     @enforce_keys [:key]
     defstruct [:key]
+
+    @opaque t :: %__MODULE__{
+              key: {any(), any()} | any()
+            }
   end
 
+  @doc """
+  Specifies that the data can be **any**thing.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = any()
+  iex> {:ok, "hi!"} = unify(schematic, "hi!")
+  iex> {:ok, [:one, :two, :three]} = unify(schematic, [:one, :two, :three])
+  iex> {:ok, true} = unify(schematic, true)
+  ```
+  """
   @spec any() :: t()
   def any() do
     %Schematic{kind: "any", unify: fn x, _dir -> {:ok, x} end}
   end
 
+  @doc """
+  Specifies that the data can be `nil`.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = null()
+  iex> {:ok, nil} = unify(schematic, nil)
+  iex> {:error, "expected null"} = unify(schematic, "hi!")
+  ```
+  """
   @spec null() :: t()
   def null() do
     %Schematic{
@@ -37,11 +77,45 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Shortcut for specifiying that a schematic can be either null or the schematic.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = nullable(str())
+  iex> {:ok, nil} = unify(schematic, nil)
+  iex> {:ok, "hi!"} = unify(schematic, "hi!")
+  iex> {:error, "expected either null or a string"} = unify(schematic, :boom)
+  ```
+  """
   @spec nullable(t()) :: t()
   def nullable(schematic) do
     oneof([null(), schematic])
   end
 
+  @doc """
+  Specifies that the data is a boolean or a specific boolean.
+
+  ## Usage
+
+  Any boolean.
+
+  ```elixir
+  iex> schematic = bool()
+  iex> {:ok, true} = unify(schematic, true)
+  iex> {:ok, false} = unify(schematic, false)
+  iex> {:error, "expected a boolean"} = unify(schematic, :boom)
+  ```
+
+  A boolean literal.
+
+  ```elixir
+  iex> schematic = bool(true)
+  iex> {:ok, true} = unify(schematic, true)
+  iex> {:error, "expected true"} = unify(schematic, :boom)
+  ```
+  """
   @spec bool(boolean() | nil) :: t()
   def bool(literal \\ nil) do
     message =
@@ -74,6 +148,27 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies that the data is a string or a specific string.
+
+  ## Usage
+
+  Any string.
+
+  ```elixir
+  iex> schematic = str()
+  iex> {:ok, "hi!"} = unify(schematic, "hi!")
+  iex> {:error, "expected a string"} = unify(schematic, :boom)
+  ```
+
+  A string literal.
+
+  ```elixir
+  iex> schematic = str("I 💜 Elixir")
+  iex> {:ok, "I 💜 Elixir"} = unify(schematic,  "I 💜 Elixir")
+  iex> {:error, ~s|expected the literal string "I 💜 Elixir"|} = unify(schematic, "I love Ruby")
+  ```
+  """
   @spec str(String.t() | nil) :: t()
   def str(literal \\ nil) do
     message =
@@ -106,6 +201,27 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies that the data is an integer or a specific integer.
+
+  ## Usage
+
+  Any integer.
+
+  ```elixir
+  iex> schematic = int()
+  iex> {:ok, 99} = unify(schematic, 99)
+  iex> {:error, "expected an integer"} = unify(schematic, :boom)
+  ```
+
+  A integer literal.
+
+  ```elixir
+  iex> schematic = int(99)
+  iex> {:ok, 99} = unify(schematic,  99)
+  iex> {:error, ~s|expected the literal integer 99|} = unify(schematic, :ninetynine)
+  ```
+  """
   @spec int(integer() | nil) :: t()
   def int(literal \\ nil) do
     message =
@@ -138,6 +254,17 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies that the data is a list of any size and contains anything.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = list()
+  iex> {:ok, ["one", 2, :three]} = unify(schematic, ["one", 2, :three])
+  iex> {:error, "expected a list"} = unify(schematic, :hi)
+  ```
+  """
   @spec list() :: t()
   def list() do
     message = "a list"
@@ -155,6 +282,17 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies that the data is a list whose items unify to the given schematic.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = list(oneof([str(), int()]))
+  iex> {:ok, ["one", 2, "three"]} = unify(schematic, ["one", 2, "three"])
+  iex> {:error, "expected a list of either a string or an integer"} = unify(schematic, ["one", 2, :three])
+  ```
+  """
   @spec list(t()) :: t()
   def list(schematic) do
     message = "a list of #{schematic.message}"
@@ -187,6 +325,27 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies that the data is a tuple of the given length where each element unifies to the schematic in the same position.
+
+  ## Usage
+
+  ```elixir
+  iex> schematic = tuple([str(), int()])
+  iex> {:ok, {"one", 2}} = unify(schematic, {"one", 2})
+  iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, {1, "two"})
+  ```
+
+  ### Options
+
+  * `:from` - Either `:tuple` or `:list`. Defaults to `:tuple`.
+
+  ```elixir
+  iex> schematic = tuple([str(), int()], from: :list)
+  iex> {:ok, {"one", 2}} = unify(schematic, ["one", 2])
+  iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, [1, "two"])
+  ```
+  """
   @spec tuple([t()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
     message = "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message)}]"
@@ -226,14 +385,115 @@ defmodule Schematic do
               error
           end)
         else
-          {:error, ~s|expected a list|}
+          {:error, ~s|expected a #{from}|}
         end
       end
     }
   end
 
+  @doc """
+  Specifies that the data is a map with the given keys (literal values) that unify to the provided blueprint.
+
+  Unification errors for keys are returned in a map with the key as the key and the value as the error.
+
+  * Map schematics serve as a way to permit certain keys and discard all others.
+  * Keys are non-nullable unless the value schematic is marked with `nullable/1`. This allows the value of the key to be nil as well as the key to be absent from the source data.
+  * Keys are considered required unless tagged with `optional/1`. This allows the entire key to be absent from the source data. If the key is present, it must unify according to the given schematic.
+
+  ## Basic Usage
+
+  The most basic map schematic can look like the following.
+
+  ```elixir
+  iex> schematic = map(%{
+  ...>   "league" => oneof([str("NBA"), str("MLB"), str("NFL")]),
+  ...> })
+  iex> # ignores the `"team"` key
+  iex> {:ok, %{"league" => "NBA"}} == unify(schematic, %{"league" => "NBA", "team" => "Chicago Bulls"})
+  true
+  iex> {:error,
+  ...>   %{
+  ...>     "league" =>
+  ...>     ~s|expected either the literal string "NBA", the literal string "MLB", or the literal string "NFL"|
+  ...>   }} = unify(schematic, %{"league" => "NHL"})
+  ```
+
+  ## With a permissive amp
+
+  If you want to _only_ check that the data is a map, but not the shape, you can use `map/0`.
+
+  ```elixir
+  iex> schematic = map()
+  iex> {:ok, %{"league" => "NBA"}} = unify(schematic, %{"league" => "NBA"})
+  ```
+
+  ## With `nullable/1`
+
+  Marking a key as nullable using `nullable/1`.
+
+  This means the value of the key can be nil as well as omitting the key entirely. The unified output will always contain the key.
+
+  ```elixir
+  iex> schematic = map(%{
+  ...>   "title" => str(),
+  ...>   "description" => nullable(str())
+  ...> })
+  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = unify(schematic, %{"title" => "Elixir 101", "description" => nil})
+  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = unify(schematic, %{"title" => "Elixir 101"})
+  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = dump(schematic, %{"title" => "Elixir 101"})
+  ```
+
+  ## With `optional/1`
+
+  Marking a key as optional using `optional/1`.
+
+  This means that you can omit the key from the input and that the unified output will not contain the key if it wasn't in the input.
+
+  If the key _is_ provided, it must unify according to the given schematic.
+
+  Likewise, using `dump/2` will also omit that key.
+
+  ```elixir
+  iex> schematic = map(%{
+  ...>   "title" => str(),
+  ...>   optional("description") => str()
+  ...> })
+  iex> {:ok, %{"title" => "Elixir 101", "description" =>  "An amazing programming course."}} = unify(schematic, %{"title" => "Elixir 101", "description" => "An amazing programming course."})
+  iex> {:ok, %{"title" => "Elixir 101"}} = unify(schematic, %{"title" => "Elixir 101"})
+  iex> {:ok, %{"title" => "Elixir 101"}} = dump(schematic, %{"title" => "Elixir 101"})
+  ```
+
+  ## With `:keys` and `:values`
+
+  Instead of passing a blueprint, which specifies keys and values, you can pass a `:keys` and `:values` options which provide schematic that all keys and values in the input must unify to.
+
+  ```elixir
+  iex> schematic = map(keys: str(), values: oneof([str(), int()]))
+  iex> {:ok, %{"type" => "big", "quantity" => 99}} = unify(schematic, %{"type" => "big", "quantity" => 99})
+  iex> {:error, %{"quantity" => "expected either a string or an integer"}} = unify(schematic, %{"type" => "big", "quantity" => [99]})
+  ```
+
+  ## Transforming Keys
+
+  During unification, key transformation can be performed if it is specified in the schematic.
+
+  You can specify a key as a 2-tuple with the first element being the input key and the second element being the output key. When calling `dump/2`, the key will be turned from the output key back to the input key (and will also be revalidated).
+
+  This is useful for transforming string keys to atom keys as well as camelCase keys to snake_case keys.
+
+  Key transformation can also be used when declaring an optional key with `optional/1`.
+
+  ```elixir
+  iex> schematic = map(%{
+  ...>   {"teamName", :team_name} => str()
+  ...> })
+  iex> {:ok, %{team_name: "Chicago Bulls"}} = unify(schematic, %{"teamName" => "Chicago Bulls"})
+  iex> {:ok, %{"teamName" => "Chicago Bulls"}} = dump(schematic, %{team_name: "Chicago Bulls"})
+  ```
+  """
+
   @spec map(map() | Keyword.t()) :: t()
-  def map(blueprint \\ %{})
+  def map(blueprint_or_opts \\ [])
 
   def map(blueprint) when is_map(blueprint) do
     %Schematic{
@@ -332,6 +592,23 @@ defmodule Schematic do
     }
   end
 
+  @doc """
+  Specifies a `map/1` schematic that is then hydrated into a struct.
+
+  Works the same as the `map/1` schematic, but will also automatically transform all keys from string keys to atom keys if a key conversion is not already specified.
+
+  Since this schematic hydrates a struct, it is also only capable of having atom keys in the output, whereas a normal map can have arbitrary terms as the key.
+
+  ```elixir
+  iex> schematic =
+  ...>   schema(HTTPRequest, %{
+  ...>     method: oneof([str("POST"), str("PUT"), str("PATCH")]),
+  ...>     body: str()
+  ...>   })
+  iex> {:ok, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|}} = unify(schematic, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|})
+  iex> {:ok, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|}} = dump(schematic, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|})
+  ```
+  """
   @spec schema(atom(), map()) :: t()
   def schema(mod, schematic) do
     schematic =
@@ -373,7 +650,51 @@ defmodule Schematic do
     {:error, "expected a #{mod} struct"}
   end
 
-  @spec raw((any() -> boolean()), [tuple()]) :: t()
+  @doc """
+  A utility for creating custom schematics.
+
+  The `raw/1` schematic is useful for creating schematics that unify the _values_ of the inputs, rather than just the shape.
+
+  ## Options
+
+  * `:message` - a custom error message. Defaults to `"is invalid"`.
+  * `:transformer` - a function that takes the input and the unification direction and must return the desired value. Defaults to `fn input, _dir -> input end`.
+
+  ## Basic Usage
+
+  ```elixir
+  iex> schematic = all([int(), raw(fn i -> i > 10 end, message: "must be greater than 10")])
+  iex> {:ok, 11} = unify(schematic, 11)
+  iex> {:error, ["must be greater than 10"]} = unify(schematic, 9)
+  ```
+
+  ## Advanced Usage
+
+  If your data requires different validations for unification and dumping, then you can pass a 2-arity function (instead of a 1-arity function) and the second parameter will be the direction.
+
+  This concept also applies to the `:transform` option.
+
+  ```elixir
+  iex> schematic =
+  ...>   raw(
+  ...>     fn
+  ...>       n, :to -> is_list(n) and length(n) == 3
+  ...>       n, :from -> is_tuple(n) and tuple_size(n) == 3
+  ...>     end,
+  ...>     message: "must be a tuple of size 3",
+  ...>     transform: fn
+  ...>       input, :to ->
+  ...>         List.to_tuple(input)
+  ...>       input, :from ->
+  ...>         Tuple.to_list(input)
+  ...>     end
+  ...>   )
+  iex> {:ok, {"one", "two", 3}} = unify(schematic, ["one", "two", 3])
+  iex> {:error, "must be a tuple of size 3"} = unify(schematic, ["not", "big"])
+  iex> {:ok, ["one", "two", 3]} = dump(schematic, {"one", "two", 3})
+  ```
+  """
+  @spec raw((any() -> boolean()) | (any(), :up | :down -> boolean()), [tuple()]) :: t()
   def raw(function, opts \\ []) do
     message = Keyword.get(opts, :message, "is invalid")
     transformer = Keyword.get(opts, :transform, fn input, _dir -> input end)
@@ -399,6 +720,20 @@ defmodule Schematic do
     f
   end
 
+  @doc """
+  Specifies that the data must unify with all of the given schematics.
+
+  On error, returns a list of validation messages.
+
+  If a schematic raises an exception, it is caught and the error `"is invalid"` is returned.
+
+  ```elixir
+  iex> schematic = all([int(), raw(&Kernel.<(&1, 10), message: "must be less than 10"), raw(&(Kernel.rem(&1, 2) == 0), message: "must be divisible by 2")])
+  iex> {:ok, 8} = unify(schematic, 8)
+  iex> {:error, ["must be less than 10", "must be divisible by 2"]} = unify(schematic, 15)
+  iex> {:error, ["expected an integer", "must be less than 10", "is invalid"]} = unify(schematic, "15")
+  ```
+  """
   @spec all([t()]) :: t()
   def all(schematics) when is_list(schematics) do
     message = Enum.map(schematics, & &1.message)
@@ -409,7 +744,7 @@ defmodule Schematic do
       unify: fn input, dir ->
         errors =
           for schematic <- schematics,
-              {result, message} = schematic.unify.(input, dir),
+              {result, message} = __try__(fn -> schematic.unify.(input, dir) end),
               result == :error do
             message
           end
@@ -423,6 +758,46 @@ defmodule Schematic do
     }
   end
 
+  defp __try__(callback) do
+    callback.()
+  rescue
+    _ ->
+      {:error, "is invalid"}
+  end
+
+  @doc """
+  Specifies that the data unifies to one of the given schematics.
+
+  Can be called with a list of schematics or a function.
+
+  ## With a list
+
+  When called with a list of schematics, they will be traversed during unification and the first one to unify will be returned. If none of them unify, then an error is returned.
+
+  ```elixir
+  iex> team = map(%{name: str(), league: str()})
+  iex> player = map(%{name: str(), team: str()})
+  iex> schematic = oneof([team, player])
+  iex> {:ok, %{name: "Indiana Pacers", league: "NBA"}} = unify(schematic, %{name: "Indiana Pacers", league: "NBA"})
+  iex> {:ok, %{name: "George Hill", team: "Indiana Pacers"}} = unify(schematic, %{name: "George Hill", team: "Indiana Pacers"})
+  iex> {:error, "expected either a map or a map"} = unify(schematic, %{name: "NBA", sport: "basketball"})
+  ```
+
+  ## With a function
+
+  When called with a function, the input is passed as the only parameter. This can be used to dispach to a specific schematic. This is a performance optimization, as you can dispatch to a specific schematic rather than traversing all of them.
+
+  ```elixir
+  iex> schematic = oneof(fn
+  ...>   %{type: "team"} -> map(%{name: str(), league: str()})
+  ...>   %{type: "player"} -> map(%{name: str(), team: str()})
+  ...>   _ -> {:error, "expected either a player or a team"}
+  ...> end)
+  iex> {:ok, %{name: "Indiana Pacers", league: "NBA"}} = unify(schematic, %{type: "team", name: "Indiana Pacers", league: "NBA"})
+  iex> {:ok, %{name: "George Hill", team: "Indiana Pacers"}} = unify(schematic, %{type: "player", name: "George Hill", team: "Indiana Pacers"})
+  iex> {:error, "expected either a player or a team"} = unify(schematic, %{name: "NBA", sport: "basketball"})
+  ```
+  """
   @spec oneof([t()] | (any -> t())) :: t()
   def oneof(schematics) when is_list(schematics) do
     message = "either #{sentence_join(schematics, "or", & &1.message)}"
@@ -461,16 +836,29 @@ defmodule Schematic do
     end)
   end
 
+  @doc """
+  Unify external data with your internal data structures.
+
+  See all the other functions for information how how to create schematics.
+  """
   @spec unify(t(), any()) :: any()
   def unify(schematic, input) do
     schematic.unify.(input, :to)
   end
 
+  @doc """
+  Dump your internal data to their external data structures.
+
+  See all the other functions for information how how to create schematics.
+  """
   @spec dump(t(), any()) :: any()
   def dump(schematic, input) do
     schematic.unify.(input, :from)
   end
 
+  @doc """
+  See `map/1` for examples and explanation.
+  """
   @spec optional(any) :: %OptionalKey{key: any()}
   def optional(key) do
     %OptionalKey{key: key}
