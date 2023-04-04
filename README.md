@@ -1,4 +1,6 @@
-# 📐 schematic
+# schematic
+
+<img width="300px" src="https://user-images.githubusercontent.com/5523984/229656560-e1e96c2c-b51f-481a-b8e3-00127432b20e.png" alt="schematic logo">
 
 <!-- MDOC !-->
 
