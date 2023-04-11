@@ -530,7 +530,15 @@ defmodule Schematic do
                     [{:ok, acc}, {:errors, errors}]
 
                   {:error, error} ->
-                    [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                    # NOTE: in the case of schemas, an optional key will exist because structs always
+                    # have all of their fields. So if they don't unify **and**, the key is optional, and
+                    # the value is nil, we can assume the schematic did not allow nil, and we can omit
+                    # the key from the dump.
+                    if input[from_key] == nil and match?(%OptionalKey{}, bpk) do
+                      [{:ok, acc}, {:errors, errors}]
+                    else
+                      [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                    end
                 end
               end
             end
@@ -614,6 +622,9 @@ defmodule Schematic do
     schematic =
       map(
         Map.new(schematic, fn
+          {%OptionalKey{key: k}, v} when is_atom(k) ->
+            {%OptionalKey{key: {to_string(k), k}}, v}
+
           {k, v} when is_atom(k) ->
             {{to_string(k), k}, v}
 

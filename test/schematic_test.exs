@@ -531,4 +531,24 @@ defmodule SchematicTest do
       assert {:error, ~s|unexpected record type "doink"|} == unify(schematic, %{type: "doink"})
     end
   end
+
+  defmodule OptionalSchema do
+    defstruct [:required, :optional]
+  end
+
+  describe "optional keys on schemas" do
+    test "will omit optional key when dumping" do
+      schematic =
+        schema(SchematicTest.OptionalSchema, %{
+          optional(:optional) => str(),
+          required: str()
+        })
+
+      assert {:ok, %SchematicTest.OptionalSchema{required: "foo!"}} ==
+               unify(schematic, %{"required" => "foo!"})
+
+      assert {:ok, %{"required" => "foo!"}} ==
+               dump(schematic, %SchematicTest.OptionalSchema{required: "foo!"})
+    end
+  end
 end
