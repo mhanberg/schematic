@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.9
+
+- feat: allow schemas to correctly dump optional fields
+
 ## v0.0.8
 
 - docs
