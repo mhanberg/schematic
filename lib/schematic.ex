@@ -513,7 +513,7 @@ defmodule Schematic do
 
   For this to be possible, recursive schematics must terminate some way. This can be achienved by specifying those keys as `optional/1` or within a `oneof/1` schematic.
 
-  Recursive schematics are specified as a MFA tuple.
+  Recursive schematics are specified as a MFA tuple, `t:lazy_schematic/0`.
 
   ```elixir
   iex> defmodule Tree do
