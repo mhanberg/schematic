@@ -15,8 +15,13 @@ defmodule Schematic do
   @opaque t :: %__MODULE__{
             unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
             kind: String.t(),
-            message: String.t() | nil
+            message: function() | nil
           }
+
+  @typedoc """
+  A lazy reference to a schematic, used to define recursive schematics.
+  """
+  @type lazy_schematic :: {atom(), atom(), list(any())}
 
   unless macro_exported?(Kernel, :then, 2) do
     defmacrop then(value, fun) do
@@ -27,8 +32,6 @@ defmodule Schematic do
   end
 
   defmodule OptionalKey do
-    @moduledoc false
-
     @enforce_keys [:key]
     defstruct [:key]
 
@@ -69,7 +72,7 @@ defmodule Schematic do
   def null() do
     %Schematic{
       kind: "null",
-      message: "null",
+      message: fn -> "null" end,
       unify: fn
         nil, _dir -> {:ok, nil}
         _input, _dir -> {:error, "expected null"}
@@ -89,7 +92,7 @@ defmodule Schematic do
   iex> {:error, "expected either null or a string"} = unify(schematic, :boom)
   ```
   """
-  @spec nullable(t()) :: t()
+  @spec nullable(t() | lazy_schematic()) :: t()
   def nullable(schematic) do
     oneof([null(), schematic])
   end
@@ -118,12 +121,13 @@ defmodule Schematic do
   """
   @spec bool(boolean() | nil) :: t()
   def bool(literal \\ nil) do
-    message =
+    message = fn ->
       if is_boolean(literal) do
         "#{inspect(literal)}"
       else
         "a boolean"
       end
+    end
 
     %Schematic{
       kind: "boolean",
@@ -135,14 +139,14 @@ defmodule Schematic do
             if is_boolean(input) && input == literal do
               {:ok, input}
             else
-              {:error, ~s|expected #{message}|}
+              {:error, ~s|expected #{message.()}|}
             end
 
           is_boolean(input) ->
             {:ok, input}
 
           true ->
-            {:error, "expected #{message}"}
+            {:error, "expected #{message.()}"}
         end
       end
     }
@@ -171,12 +175,13 @@ defmodule Schematic do
   """
   @spec str(String.t() | nil) :: t()
   def str(literal \\ nil) do
-    message =
+    message = fn ->
       if literal do
         "the literal string #{inspect(literal)}"
       else
         "a string"
       end
+    end
 
     %Schematic{
       kind: "string",
@@ -188,14 +193,14 @@ defmodule Schematic do
             if is_binary(input) && input == literal do
               {:ok, input}
             else
-              {:error, ~s|expected #{message}|}
+              {:error, ~s|expected #{message.()}|}
             end
 
           is_binary(input) ->
             {:ok, input}
 
           true ->
-            {:error, "expected #{message}"}
+            {:error, "expected #{message.()}"}
         end
       end
     }
@@ -224,12 +229,13 @@ defmodule Schematic do
   """
   @spec int(integer() | nil) :: t()
   def int(literal \\ nil) do
-    message =
+    message = fn ->
       if literal do
         "the literal integer #{inspect(literal)}"
       else
         "an integer"
       end
+    end
 
     %Schematic{
       kind: "integer",
@@ -241,14 +247,14 @@ defmodule Schematic do
             if is_integer(input) && input == literal do
               {:ok, input}
             else
-              {:error, ~s|expected #{message}|}
+              {:error, ~s|expected #{message.()}|}
             end
 
           is_integer(input) ->
             {:ok, input}
 
           true ->
-            {:error, "expected #{message}"}
+            {:error, "expected #{message.()}"}
         end
       end
     }
@@ -267,7 +273,7 @@ defmodule Schematic do
   """
   @spec list() :: t()
   def list() do
-    message = "a list"
+    message = fn -> "a list" end
 
     %Schematic{
       kind: "list",
@@ -276,7 +282,7 @@ defmodule Schematic do
         if is_list(input) do
           {:ok, input}
         else
-          {:error, ~s|expected #{message}|}
+          {:error, ~s|expected #{message.()}|}
         end
       end
     }
@@ -293,9 +299,19 @@ defmodule Schematic do
   iex> {:error, "expected a list of either a string or an integer"} = unify(schematic, ["one", 2, :three])
   ```
   """
-  @spec list(t()) :: t()
+  @spec list(t() | lazy_schematic()) :: t()
   def list(schematic) do
-    message = "a list of #{schematic.message}"
+    schematic = fn ->
+      case schematic do
+        {mod, func, args} ->
+          apply(mod, func, args)
+
+        schematic ->
+          schematic
+      end
+    end
+
+    message = fn -> "a list of #{schematic.().message.()}" end
 
     %Schematic{
       kind: "list",
@@ -303,12 +319,12 @@ defmodule Schematic do
       unify: fn input, dir ->
         if is_list(input) do
           Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
-            case schematic.unify.(el, dir) do
+            case schematic.().unify.(el, dir) do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
               {:error, _error} ->
-                {:halt, {:error, ~s|expected #{message}|}}
+                {:halt, {:error, ~s|expected #{message.()}|}}
             end
           end)
           |> then(fn
@@ -346,9 +362,9 @@ defmodule Schematic do
   iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, [1, "two"])
   ```
   """
-  @spec tuple([t()], Keyword.t()) :: t()
+  @spec tuple([t() | lazy_schematic()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
-    message = "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message)}]"
+    message = fn -> "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message.())}]" end
     from = Keyword.get(opts, :from, :tuple)
 
     {condition, to_list} =
@@ -374,7 +390,7 @@ defmodule Schematic do
                 {:cont, {:ok, [output | acc]}}
 
               {:error, _error} ->
-                {:halt, {:error, ~s|expected #{message}|}}
+                {:halt, {:error, ~s|expected #{message.()}|}}
             end
           end)
           |> then(fn
@@ -490,15 +506,81 @@ defmodule Schematic do
   iex> {:ok, %{team_name: "Chicago Bulls"}} = unify(schematic, %{"teamName" => "Chicago Bulls"})
   iex> {:ok, %{"teamName" => "Chicago Bulls"}} = dump(schematic, %{team_name: "Chicago Bulls"})
   ```
+
+  ## Recursive Schematics
+
+  One can define schematics that specify keys whose values are themselves.
+
+  For this to be possible, recursive schematics must terminate some way. This can be achienved by specifying those keys as `optional/1` or within a `oneof/1` schematic.
+
+  Recursive schematics are specified as a MFA tuple.
+
+  ```elixir
+  iex> defmodule Tree do
+  ...>   import Schematic
+  ...>
+  ...>   def schematic() do
+  ...>     map(%{values: list(Tree.branch())})
+  ...>   end
+  ...>
+  ...>   def branch() do
+  ...>     map(%{
+  ...>       values: list(oneof([Tree.leaf(), {__MODULE__, :branch, []}]))
+  ...>     })
+  ...>   end
+  ...>
+  ...>   def leaf() do
+  ...>     map(%{
+  ...>       value: str()
+  ...>     })
+  ...>   end
+  ...> end
+  iex> input = %{
+  ...>   type: "root",
+  ...>   values: [
+  ...>     %{
+  ...>       type: "branch",
+  ...>       values: [
+  ...>         %{
+  ...>           type: "leaf",
+  ...>           value: "i'm a leaf"
+  ...>         },
+  ...>         %{
+  ...>           type: "branch",
+  ...>           values: [
+  ...>             %{
+  ...>               type: "leaf",
+  ...>               value: "i'm another leaf"
+  ...>             }
+  ...>           ]
+  ...>         }
+  ...>       ]
+  ...>     }
+  ...>   ]
+  ...> }
+  iex> unify(SchematicTest.Tree.schematic(), input)
+  {:ok, %{values: [%{values: [%{value: "i'm a leaf"}, %{values: [%{value: "i'm another leaf"}]}]}]}}
+  ```
   """
 
-  @spec map(map() | Keyword.t()) :: t()
+  @typedoc "Map blueprint key."
+  @type map_blueprint_key :: OptionalKey.t() | any()
+
+  @typedoc "Map blueprint value."
+  @type map_blueprint_value :: t() | lazy_schematic()
+
+  @typedoc """
+  The blueprint used to specify a map schematic.
+  """
+  @type map_blueprint :: %{map_blueprint_key() => map_blueprint_value()}
+
+  @spec map(%{map_blueprint_key() => map_blueprint_value()} | Keyword.t()) :: t()
   def map(blueprint_or_opts \\ [])
 
   def map(blueprint) when is_map(blueprint) do
     %Schematic{
       kind: "map",
-      message: "a map",
+      message: fn -> "a map" end,
       unify: fn input, dir ->
         if is_map(input) do
           bp_keys = Map.keys(blueprint)
@@ -507,7 +589,15 @@ defmodule Schematic do
             bp_keys,
             [ok: %{}, errors: %{}],
             fn bpk, [{:ok, acc}, {:errors, errors}] ->
-              schematic = blueprint[bpk]
+              schematic =
+                case blueprint[bpk] do
+                  {mod, func, args} ->
+                    apply(mod, func, args)
+
+                  schematic ->
+                    schematic
+                end
+
               key = with %OptionalKey{key: key} <- bpk, do: key
               {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
 
@@ -563,7 +653,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
-      message: "a map",
+      message: fn -> "a map" end,
       unify: fn input, dir ->
         if is_map(input) do
           Enum.reduce(
@@ -617,11 +707,23 @@ defmodule Schematic do
   iex> {:ok, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|}} = dump(schematic, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|})
   ```
   """
-  @spec schema(atom(), map()) :: t()
-  def schema(mod, schematic) do
+
+  @typedoc "Schema blueprint key."
+  @type schema_blueprint_key :: OptionalKey.t() | atom()
+
+  @typedoc "Schema blueprint value."
+  @type schema_blueprint_value :: t() | lazy_schematic()
+
+  @typedoc """
+  The blueprint used to specify a schema schematic.
+  """
+  @type schema_blueprint :: %{schema_blueprint_key() => schema_blueprint_value()}
+
+  @spec schema(atom(), schema_blueprint()) :: t()
+  def schema(mod, blueprint) do
     schematic =
       map(
-        Map.new(schematic, fn
+        Map.new(blueprint, fn
           {%OptionalKey{key: k}, v} when is_atom(k) ->
             {%OptionalKey{key: {to_string(k), k}}, v}
 
@@ -635,7 +737,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
-      message: "a %#{String.replace(to_string(mod), "Elixir.", "")}{}",
+      message: fn -> "a %#{String.replace(to_string(mod), "Elixir.", "")}{}" end,
       unify: fn input, dir ->
         case dir do
           :to ->
@@ -707,7 +809,7 @@ defmodule Schematic do
   """
   @spec raw((any() -> boolean()) | (any(), :up | :down -> boolean()), [tuple()]) :: t()
   def raw(function, opts \\ []) do
-    message = Keyword.get(opts, :message, "is invalid")
+    message = fn -> Keyword.get(opts, :message, "is invalid") end
     transformer = Keyword.get(opts, :transform, fn input, _dir -> input end)
 
     %Schematic{
@@ -717,7 +819,7 @@ defmodule Schematic do
         if convert_to_two_arity(function).(input, dir) do
           {:ok, convert_to_two_arity(transformer).(input, dir)}
         else
-          {:error, message}
+          {:error, message.()}
         end
       end
     }
@@ -747,7 +849,7 @@ defmodule Schematic do
   """
   @spec all([t()]) :: t()
   def all(schematics) when is_list(schematics) do
-    message = Enum.map(schematics, & &1.message)
+    message = fn -> Enum.map(schematics, & &1.message) end
 
     %Schematic{
       kind: "all",
@@ -809,9 +911,9 @@ defmodule Schematic do
   iex> {:error, "expected either a player or a team"} = unify(schematic, %{name: "NBA", sport: "basketball"})
   ```
   """
-  @spec oneof([t()] | (any -> t())) :: t()
+  @spec oneof([t() | lazy_schematic()] | (any -> t())) :: t()
   def oneof(schematics) when is_list(schematics) do
-    message = "either #{sentence_join(schematics, "or", & &1.message)}"
+    message = fn -> "either #{sentence_join(schematics, "or", & &1.message.())}" end
 
     %Schematic{
       kind: "oneof",
@@ -819,10 +921,16 @@ defmodule Schematic do
       unify: fn input, dir ->
         inquiry =
           Enum.find_value(schematics, fn schematic ->
+            schematic =
+              case schematic do
+                {mod, func, args} -> apply(mod, func, args)
+                schematic -> schematic
+              end
+
             with {:error, _} <- schematic.unify.(input, dir), do: false
           end)
 
-        with nil <- inquiry, do: {:error, ~s|expected #{message}|}
+        with nil <- inquiry, do: {:error, ~s|expected #{message.()}|}
       end
     }
   end
@@ -870,7 +978,7 @@ defmodule Schematic do
   @doc """
   See `map/1` for examples and explanation.
   """
-  @spec optional(any) :: %OptionalKey{key: any()}
+  @spec optional(any) :: OptionalKey.t()
   def optional(key) do
     %OptionalKey{key: key}
   end

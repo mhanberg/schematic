@@ -551,4 +551,53 @@ defmodule SchematicTest do
                dump(schematic, %SchematicTest.OptionalSchema{required: "foo!"})
     end
   end
+
+  defmodule Recursive do
+    import Schematic
+
+    def foo() do
+      map(%{
+        optional(:recursive) => {__MODULE__, :foo, []},
+        optional(:recursive_list) => list({__MODULE__, :foo, []}),
+        foo: str(),
+        bar: int()
+      })
+    end
+  end
+
+  describe "recursive schematics" do
+    setup do
+      [schematic: Recursive.foo()]
+    end
+
+    test "doesn't infinitely loop", %{schematic: schematic} do
+      assert {:ok,
+              %{
+                foo: "hi",
+                bar: 99,
+                recursive_list: [%{foo: "bye", bar: 0, recursive: %{foo: "yo", bar: 420}}],
+                recursive: %{foo: "bye", bar: 0, recursive: %{foo: "yo", bar: 420}}
+              }} =
+               unify(schematic, %{
+                 foo: "hi",
+                 bar: 99,
+                 recursive_list: [%{foo: "bye", bar: 0, recursive: %{foo: "yo", bar: 420}}],
+                 recursive: %{foo: "bye", bar: 0, recursive: %{foo: "yo", bar: 420}}
+               })
+    end
+
+    test "correctly unifies", %{schematic: schematic} do
+      assert {:error,
+              %{
+                recursive: %{recursive: "expected a map"},
+                recursive_list: "expected a list of a map"
+              }} ==
+               unify(schematic, %{
+                 foo: "hi",
+                 bar: 99,
+                 recursive_list: ["this shouldn't work"],
+                 recursive: %{foo: "bye", bar: 0, recursive: "this shouldn't work"}
+               })
+    end
+  end
 end
