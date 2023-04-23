@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.10
+
+- feat: recursive schematics by @mhanberg in https://github.com/mhanberg/schematic/pull/5
+
 ## v0.0.9
 
 - feat: allow schemas to correctly dump optional fields
