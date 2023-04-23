@@ -202,7 +202,7 @@ iex> dump(Bookstore.BooksListResult.schematic(), %Bookstore.BooksListResult{
 ```elixir
 def deps do
   [
-    {:schematic, "~> 0.0.9"}
+    {:schematic, "~> 0.0.10"}
   ]
 end
 ```

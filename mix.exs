@@ -6,12 +6,13 @@ defmodule Schematic.MixProject do
       app: :schematic,
       description: "Data validation and transformation",
       package: package(),
-      version: "0.0.9",
+      version: "0.0.10",
       elixir: "~> 1.10",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       source_url: "https://github.com/mhanberg/schematic",
-      deps: deps()
+      deps: deps(),
+      docs: docs()
     ]
   end
 
@@ -28,7 +29,10 @@ defmodule Schematic.MixProject do
     [
       maintainers: ["Mitchell Hanberg"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/mhanberg/schematic"},
+      links: %{
+        GitHub: "https://github.com/mhanberg/schematic",
+        Sponsor: "https://github.com/sponsors/mhanberg"
+      },
       files: ~w(lib CHANGELOG.md LICENSE mix.exs README.md .formatter.exs)
     ]
   end
@@ -36,6 +40,12 @@ defmodule Schematic.MixProject do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp docs() do
+    [
+      main: "Schematic"
     ]
   end
 end
