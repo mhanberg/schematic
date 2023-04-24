@@ -736,7 +736,7 @@ defmodule Schematic do
       )
 
     %Schematic{
-      kind: "map",
+      kind: "#{mod}",
       message: fn -> "a %#{String.replace(to_string(mod), "Elixir.", "")}{}" end,
       unify: fn input, dir ->
         case dir do
@@ -937,7 +937,7 @@ defmodule Schematic do
 
   def oneof(dispatch) when is_function(dispatch) do
     %Schematic{
-      kind: "oneof",
+      kind: "oneof:dispatch",
       unify: fn input, dir ->
         with %Schematic{} = schematic <- dispatch.(input) do
           schematic.unify.(input, dir)
@@ -962,7 +962,11 @@ defmodule Schematic do
   """
   @spec unify(t(), any()) :: any()
   def unify(schematic, input) do
-    schematic.unify.(input, :to)
+    :telemetry.span([:schematic, :unify], %{kind: kind(schematic)}, fn ->
+      result = schematic.unify.(input, :to)
+
+      {result, %{kind: kind(schematic), schema: mod(result)}}
+    end)
   end
 
   @doc """
@@ -972,8 +976,16 @@ defmodule Schematic do
   """
   @spec dump(t(), any()) :: any()
   def dump(schematic, input) do
-    schematic.unify.(input, :from)
+    :telemetry.span([:schematic, :dump], %{kind: kind(schematic)}, fn ->
+      {schematic.unify.(input, :from), %{kind: kind(schematic)}}
+    end)
   end
+
+  defp mod({:ok, %struct{}}), do: inspect(struct)
+  defp mod(_), do: nil
+  defp kind(%Schematic{kind: kind}), do: kind
+  defp kind({_m, _f, _a} = mfa), do: inspect(mfa)
+  defp kind(_), do: "unknown"
 
   @doc """
   See `map/1` for examples and explanation.
