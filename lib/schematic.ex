@@ -958,7 +958,7 @@ defmodule Schematic do
   @doc """
   Unify external data with your internal data structures.
 
-  See all the other functions for information how how to create schematics.
+  See all the other functions for information on how to create schematics.
   """
   @spec unify(t(), any()) :: any()
   def unify(schematic, input) do
@@ -968,7 +968,7 @@ defmodule Schematic do
   @doc """
   Dump your internal data to their external data structures.
 
-  See all the other functions for information how how to create schematics.
+  See all the other functions for information on how to create schematics.
   """
   @spec dump(t(), any()) :: any()
   def dump(schematic, input) do
