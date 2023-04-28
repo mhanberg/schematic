@@ -153,6 +153,20 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
+    test "oneof/1 properties" do
+      check all(
+              schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
+              input <-
+                schematics
+                |> Enum.map(&Generators.from_schematic/1)
+                |> StreamData.one_of()
+            ) do
+        schematic = oneof(schematics)
+
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
     test "map/1" do
       schematic =
         map(%{
