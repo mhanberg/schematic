@@ -199,17 +199,9 @@ iex> dump(Bookstore.BooksListResult.schematic(), %Bookstore.BooksListResult{
 
 schematic fires the following events:
 
-- `[:schematic, :unify, :start]`
-
-  Fired when unification starts.
-
-- `[:schematic, :unify, :stop]`
-
-  Fired when unification stops.
-
-- `[:schematic, :unify, :exception]`
-
-  Fired when unification raises an exception.
+- `[:schematic, :unify, :start]` - Fired when unification starts.
+- `[:schematic, :unify, :stop]` - Fired when unification stops.
+- `[:schematic, :unify, :exception]` - Fired when unification raises an exception.
 
 <!-- MDOC !-->
 
