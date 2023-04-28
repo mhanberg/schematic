@@ -30,13 +30,16 @@ defmodule SchematicTest.Generators do
       bool(),
       str(),
       list(),
-      Schematic.map(
+      map(
         key_schematic: str(),
         value_schematic:
           StreamData.member_of([
             str(),
             int(),
-            bool()
+            bool(),
+            null(),
+            list(),
+            map()
           ])
       )
     ]
@@ -64,7 +67,10 @@ defmodule SchematicTest.Generators do
           StreamData.member_of([
             str(),
             int(),
-            bool()
+            bool(),
+            null(),
+            list(),
+            map()
           ])
         )
 

@@ -177,6 +177,48 @@ defmodule SchematicTest do
       assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
     end
 
+    test "map/1 schematic options properties" do
+      check all(
+              schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
+              input <-
+                StreamData.map_of(
+                  StreamData.binary(),
+                  Enum.map(schematics, &Generators.from_schematic/1) |> StreamData.one_of()
+                )
+            ) do
+        schematic = map(key_schematic: str(), value_schematic: oneof(schematics))
+
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
+    test "map/1 blueprint properties" do
+      check all(
+              {blueprint, input} <-
+                StreamData.bind(
+                  StreamData.map_of(StreamData.binary(), Generators.schematic(), min_length: 1),
+                  fn blueprint ->
+                    StreamData.bind(StreamData.constant(blueprint), fn blueprint ->
+                      materialized_blueprint =
+                        Enum.reduce(blueprint, %{}, fn {key, schematic}, acc ->
+                          Map.put(
+                            acc,
+                            key,
+                            Generators.from_schematic(schematic) |> Enum.fetch!(0)
+                          )
+                        end)
+
+                      StreamData.constant({blueprint, materialized_blueprint})
+                    end)
+                  end
+                )
+            ) do
+        schematic = map(blueprint)
+
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
     test "complex" do
       schematic =
         map(%{
