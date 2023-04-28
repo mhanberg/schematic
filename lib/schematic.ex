@@ -54,7 +54,7 @@ defmodule Schematic do
   """
   @spec any() :: t()
   def any() do
-    %Schematic{kind: "any", unify: fn x, _dir -> {:ok, x} end}
+    %Schematic{kind: "any", unify: telemetry_wrap(:any, %{}, fn x, _dir -> {:ok, x} end)}
   end
 
   @doc """
@@ -73,10 +73,11 @@ defmodule Schematic do
     %Schematic{
       kind: "null",
       message: fn -> "null" end,
-      unify: fn
-        nil, _dir -> {:ok, nil}
-        _input, _dir -> {:error, "expected null"}
-      end
+      unify:
+        telemetry_wrap(:null, %{}, fn
+          nil, _dir -> {:ok, nil}
+          _input, _dir -> {:error, "expected null"}
+        end)
     }
   end
 
@@ -132,23 +133,24 @@ defmodule Schematic do
     %Schematic{
       kind: "boolean",
       message: message,
-      unify: fn input, _dir ->
-        # FIXME: this is ugly
-        cond do
-          is_boolean(literal) ->
-            if is_boolean(input) && input == literal do
+      unify:
+        telemetry_wrap(:bool, %{literal: not is_nil(literal)}, fn input, _dir ->
+          # FIXME: this is ugly
+          cond do
+            is_boolean(literal) ->
+              if is_boolean(input) && input == literal do
+                {:ok, input}
+              else
+                {:error, ~s|expected #{message.()}|}
+              end
+
+            is_boolean(input) ->
               {:ok, input}
-            else
-              {:error, ~s|expected #{message.()}|}
-            end
 
-          is_boolean(input) ->
-            {:ok, input}
-
-          true ->
-            {:error, "expected #{message.()}"}
-        end
-      end
+            true ->
+              {:error, "expected #{message.()}"}
+          end
+        end)
     }
   end
 
@@ -186,23 +188,24 @@ defmodule Schematic do
     %Schematic{
       kind: "string",
       message: message,
-      unify: fn input, _dir ->
-        # FIXME: this is ugly
-        cond do
-          is_binary(literal) ->
-            if is_binary(input) && input == literal do
+      unify:
+        telemetry_wrap(:str, %{literal: not is_nil(literal)}, fn input, _dir ->
+          # FIXME: this is ugly
+          cond do
+            is_binary(literal) ->
+              if is_binary(input) && input == literal do
+                {:ok, input}
+              else
+                {:error, ~s|expected #{message.()}|}
+              end
+
+            is_binary(input) ->
               {:ok, input}
-            else
-              {:error, ~s|expected #{message.()}|}
-            end
 
-          is_binary(input) ->
-            {:ok, input}
-
-          true ->
-            {:error, "expected #{message.()}"}
-        end
-      end
+            true ->
+              {:error, "expected #{message.()}"}
+          end
+        end)
     }
   end
 
@@ -240,23 +243,24 @@ defmodule Schematic do
     %Schematic{
       kind: "integer",
       message: message,
-      unify: fn input, _dir ->
-        # FIXME: this is ugly
-        cond do
-          is_integer(literal) ->
-            if is_integer(input) && input == literal do
+      unify:
+        telemetry_wrap(:int, %{literal: not is_nil(literal)}, fn input, _dir ->
+          # FIXME: this is ugly
+          cond do
+            is_integer(literal) ->
+              if is_integer(input) && input == literal do
+                {:ok, input}
+              else
+                {:error, ~s|expected #{message.()}|}
+              end
+
+            is_integer(input) ->
               {:ok, input}
-            else
-              {:error, ~s|expected #{message.()}|}
-            end
 
-          is_integer(input) ->
-            {:ok, input}
-
-          true ->
-            {:error, "expected #{message.()}"}
-        end
-      end
+            true ->
+              {:error, "expected #{message.()}"}
+          end
+        end)
     }
   end
 
@@ -278,13 +282,14 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
-      unify: fn input, _dir ->
-        if is_list(input) do
-          {:ok, input}
-        else
-          {:error, ~s|expected #{message.()}|}
-        end
-      end
+      unify:
+        telemetry_wrap(:list, %{}, fn input, _dir ->
+          if is_list(input) do
+            {:ok, input}
+          else
+            {:error, ~s|expected #{message.()}|}
+          end
+        end)
     }
   end
 
@@ -316,28 +321,29 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
-      unify: fn input, dir ->
-        if is_list(input) do
-          Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
-            case schematic.().unify.(el, dir) do
-              {:ok, output} ->
-                {:cont, {:ok, [output | acc]}}
+      unify:
+        telemetry_wrap(:list, %{}, fn input, dir ->
+          if is_list(input) do
+            Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
+              case schematic.().unify.(el, dir) do
+                {:ok, output} ->
+                  {:cont, {:ok, [output | acc]}}
 
-              {:error, _error} ->
-                {:halt, {:error, ~s|expected #{message.()}|}}
-            end
-          end)
-          |> then(fn
-            {:ok, result} ->
-              {:ok, Enum.reverse(result)}
+                {:error, _error} ->
+                  {:halt, {:error, ~s|expected #{message.()}|}}
+              end
+            end)
+            |> then(fn
+              {:ok, result} ->
+                {:ok, Enum.reverse(result)}
 
-            error ->
-              error
-          end)
-        else
-          {:error, ~s|expected a list|}
-        end
-      end
+              error ->
+                error
+            end)
+          else
+            {:error, ~s|expected a list|}
+          end
+        end)
     }
   end
 
@@ -379,31 +385,32 @@ defmodule Schematic do
     %Schematic{
       kind: "tuple",
       message: message,
-      unify: fn input, dir ->
-        if condition.(input) do
-          input
-          |> to_list.()
-          |> Enum.with_index()
-          |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
-            case Enum.at(schematics, idx).unify.(el, dir) do
-              {:ok, output} ->
-                {:cont, {:ok, [output | acc]}}
+      unify:
+        telemetry_wrap(:tuple, %{from: from}, fn input, dir ->
+          if condition.(input) do
+            input
+            |> to_list.()
+            |> Enum.with_index()
+            |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
+              case Enum.at(schematics, idx).unify.(el, dir) do
+                {:ok, output} ->
+                  {:cont, {:ok, [output | acc]}}
 
-              {:error, _error} ->
-                {:halt, {:error, ~s|expected #{message.()}|}}
-            end
-          end)
-          |> then(fn
-            {:ok, result} ->
-              {:ok, result |> Enum.reverse() |> List.to_tuple()}
+                {:error, _error} ->
+                  {:halt, {:error, ~s|expected #{message.()}|}}
+              end
+            end)
+            |> then(fn
+              {:ok, result} ->
+                {:ok, result |> Enum.reverse() |> List.to_tuple()}
 
-            error ->
-              error
-          end)
-        else
-          {:error, ~s|expected a #{from}|}
-        end
-      end
+              error ->
+                error
+            end)
+          else
+            {:error, ~s|expected a #{from}|}
+          end
+        end)
     }
   end
 
@@ -581,69 +588,70 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: fn -> "a map" end,
-      unify: fn input, dir ->
-        if is_map(input) do
-          bp_keys = Map.keys(blueprint)
+      unify:
+        telemetry_wrap(:map, %{style: :blueprint}, fn input, dir ->
+          if is_map(input) do
+            bp_keys = Map.keys(blueprint)
 
-          Enum.reduce(
-            bp_keys,
-            [ok: %{}, errors: %{}],
-            fn bpk, [{:ok, acc}, {:errors, errors}] ->
-              schematic =
-                case blueprint[bpk] do
-                  {mod, func, args} ->
-                    apply(mod, func, args)
+            Enum.reduce(
+              bp_keys,
+              [ok: %{}, errors: %{}],
+              fn bpk, [{:ok, acc}, {:errors, errors}] ->
+                schematic =
+                  case blueprint[bpk] do
+                    {mod, func, args} ->
+                      apply(mod, func, args)
 
-                  schematic ->
-                    schematic
-                end
+                    schematic ->
+                      schematic
+                  end
 
-              key = with %OptionalKey{key: key} <- bpk, do: key
-              {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
+                key = with %OptionalKey{key: key} <- bpk, do: key
+                {from_key, to_key} = with key when not is_tuple(key) <- key, do: {key, key}
 
-              {from_key, to_key} =
-                case dir do
-                  :to -> {from_key, to_key}
-                  :from -> {to_key, from_key}
-                end
+                {from_key, to_key} =
+                  case dir do
+                    :to -> {from_key, to_key}
+                    :from -> {to_key, from_key}
+                  end
 
-              if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
-                [{:ok, acc}, {:errors, errors}]
-              else
-                case schematic.unify.(input[from_key], dir) do
-                  {:ok, output} ->
-                    acc =
-                      acc
-                      |> Map.delete(from_key)
-                      |> Map.put(to_key, output)
+                if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
+                  [{:ok, acc}, {:errors, errors}]
+                else
+                  case schematic.unify.(input[from_key], dir) do
+                    {:ok, output} ->
+                      acc =
+                        acc
+                        |> Map.delete(from_key)
+                        |> Map.put(to_key, output)
 
-                    [{:ok, acc}, {:errors, errors}]
-
-                  {:error, error} ->
-                    # NOTE: in the case of schemas, an optional key will exist because structs always
-                    # have all of their fields. So if they don't unify **and**, the key is optional, and
-                    # the value is nil, we can assume the schematic did not allow nil, and we can omit
-                    # the key from the dump.
-                    if input[from_key] == nil and match?(%OptionalKey{}, bpk) do
                       [{:ok, acc}, {:errors, errors}]
-                    else
-                      [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
-                    end
+
+                    {:error, error} ->
+                      # NOTE: in the case of schemas, an optional key will exist because structs always
+                      # have all of their fields. So if they don't unify **and**, the key is optional, and
+                      # the value is nil, we can assume the schematic did not allow nil, and we can omit
+                      # the key from the dump.
+                      if input[from_key] == nil and match?(%OptionalKey{}, bpk) do
+                        [{:ok, acc}, {:errors, errors}]
+                      else
+                        [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                      end
+                  end
                 end
               end
-            end
-          )
-          |> then(fn
-            [ok: output, errors: e] when map_size(e) == 0 ->
-              {:ok, output}
+            )
+            |> then(fn
+              [ok: output, errors: e] when map_size(e) == 0 ->
+                {:ok, output}
 
-            [ok: _output, errors: errors] ->
-              {:error, errors}
-          end)
-        else
-          {:error, "expected a map"}
-        end
-      end
+              [ok: _output, errors: errors] ->
+                {:error, errors}
+            end)
+          else
+            {:error, "expected a map"}
+          end
+        end)
     }
   end
 
@@ -654,39 +662,40 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: fn -> "a map" end,
-      unify: fn input, dir ->
-        if is_map(input) do
-          Enum.reduce(
-            Map.keys(input),
-            [ok: %{}, errors: %{}],
-            fn input_key, [{:ok, acc}, {:errors, errors}] ->
-              case key_schematic.unify.(input_key, dir) do
-                {:ok, key_output} ->
-                  case value_schematic.unify.(input[input_key], dir) do
-                    {:ok, value_output} ->
-                      [{:ok, Map.put(acc, key_output, value_output)}, {:errors, errors}]
+      unify:
+        telemetry_wrap(:map, %{style: :open}, fn input, dir ->
+          if is_map(input) do
+            Enum.reduce(
+              Map.keys(input),
+              [ok: %{}, errors: %{}],
+              fn input_key, [{:ok, acc}, {:errors, errors}] ->
+                case key_schematic.unify.(input_key, dir) do
+                  {:ok, key_output} ->
+                    case value_schematic.unify.(input[input_key], dir) do
+                      {:ok, value_output} ->
+                        [{:ok, Map.put(acc, key_output, value_output)}, {:errors, errors}]
 
-                    {:error, error} ->
-                      [{:ok, acc}, {:errors, Map.put(errors, input_key, error)}]
-                  end
+                      {:error, error} ->
+                        [{:ok, acc}, {:errors, Map.put(errors, input_key, error)}]
+                    end
 
-                {:error, _error} ->
-                  # NOTE: we pass just ignore keys which non conforming keys
-                  [{:ok, acc}, {:errors, errors}]
+                  {:error, _error} ->
+                    # NOTE: we pass just ignore keys which non conforming keys
+                    [{:ok, acc}, {:errors, errors}]
+                end
               end
-            end
-          )
-          |> then(fn
-            [ok: output, errors: e] when map_size(e) == 0 ->
-              {:ok, output}
+            )
+            |> then(fn
+              [ok: output, errors: e] when map_size(e) == 0 ->
+                {:ok, output}
 
-            [ok: _output, errors: errors] ->
-              {:error, errors}
-          end)
-        else
-          {:error, "expected a map"}
-        end
-      end
+              [ok: _output, errors: errors] ->
+                {:error, errors}
+            end)
+          else
+            {:error, "expected a map"}
+          end
+        end)
     }
   end
 
@@ -736,22 +745,23 @@ defmodule Schematic do
       )
 
     %Schematic{
-      kind: "map",
+      kind: "#{mod}",
       message: fn -> "a %#{String.replace(to_string(mod), "Elixir.", "")}{}" end,
-      unify: fn input, dir ->
-        case dir do
-          :to ->
-            with {:ok, output} <- schematic.unify.(input, :to) do
-              {:ok, struct(mod, output)}
-            end
+      unify:
+        telemetry_wrap(:schema, %{mod: mod}, fn input, dir ->
+          case dir do
+            :to ->
+              with {:ok, output} <- schematic.unify.(input, :to) do
+                {:ok, struct(mod, output)}
+              end
 
-          :from ->
-            with {:ok, input} <- struct?(input, mod),
-                 {:ok, output} <- schematic.unify.(Map.from_struct(input), :from) do
-              {:ok, output}
-            end
-        end
-      end
+            :from ->
+              with {:ok, input} <- struct?(input, mod),
+                   {:ok, output} <- schematic.unify.(Map.from_struct(input), :from) do
+                {:ok, output}
+              end
+          end
+        end)
     }
   end
 
@@ -815,13 +825,14 @@ defmodule Schematic do
     %Schematic{
       kind: "function",
       message: message,
-      unify: fn input, dir ->
-        if convert_to_two_arity(function).(input, dir) do
-          {:ok, convert_to_two_arity(transformer).(input, dir)}
-        else
-          {:error, message.()}
-        end
-      end
+      unify:
+        telemetry_wrap(:raw, %{}, fn input, dir ->
+          if convert_to_two_arity(function).(input, dir) do
+            {:ok, convert_to_two_arity(transformer).(input, dir)}
+          else
+            {:error, message.()}
+          end
+        end)
     }
   end
 
@@ -854,20 +865,21 @@ defmodule Schematic do
     %Schematic{
       kind: "all",
       message: message,
-      unify: fn input, dir ->
-        errors =
-          for schematic <- schematics,
-              {result, message} = __try__(fn -> schematic.unify.(input, dir) end),
-              result == :error do
-            message
-          end
+      unify:
+        telemetry_wrap(:all, %{}, fn input, dir ->
+          errors =
+            for schematic <- schematics,
+                {result, message} = __try__(fn -> schematic.unify.(input, dir) end),
+                result == :error do
+              message
+            end
 
-        if Enum.empty?(errors) do
-          {:ok, input}
-        else
-          {:error, errors}
-        end
-      end
+          if Enum.empty?(errors) do
+            {:ok, input}
+          else
+            {:error, errors}
+          end
+        end)
     }
   end
 
@@ -918,31 +930,33 @@ defmodule Schematic do
     %Schematic{
       kind: "oneof",
       message: message,
-      unify: fn input, dir ->
-        inquiry =
-          Enum.find_value(schematics, fn schematic ->
-            schematic =
-              case schematic do
-                {mod, func, args} -> apply(mod, func, args)
-                schematic -> schematic
-              end
+      unify:
+        telemetry_wrap(:oneof, %{style: :sequential}, fn input, dir ->
+          inquiry =
+            Enum.find_value(schematics, fn schematic ->
+              schematic =
+                case schematic do
+                  {mod, func, args} -> apply(mod, func, args)
+                  schematic -> schematic
+                end
 
-            with {:error, _} <- schematic.unify.(input, dir), do: false
-          end)
+              with {:error, _} <- schematic.unify.(input, dir), do: false
+            end)
 
-        with nil <- inquiry, do: {:error, ~s|expected #{message.()}|}
-      end
+          with nil <- inquiry, do: {:error, ~s|expected #{message.()}|}
+        end)
     }
   end
 
   def oneof(dispatch) when is_function(dispatch) do
     %Schematic{
-      kind: "oneof",
-      unify: fn input, dir ->
-        with %Schematic{} = schematic <- dispatch.(input) do
-          schematic.unify.(input, dir)
-        end
-      end
+      kind: "oneof:dispatch",
+      unify:
+        telemetry_wrap(:oneof, %{style: :dispatch}, fn input, dir ->
+          with %Schematic{} = schematic <- dispatch.(input) do
+            schematic.unify.(input, dir)
+          end
+        end)
     }
   end
 
@@ -973,6 +987,17 @@ defmodule Schematic do
   @spec dump(t(), any()) :: any()
   def dump(schematic, input) do
     schematic.unify.(input, :from)
+  end
+
+  defp telemetry_wrap(type, metadata, func) do
+    fn input, dir ->
+      metadata = Map.merge(%{kind: type, dir: dir}, metadata)
+
+      :telemetry.span([:schematic, :unify], metadata, fn ->
+        result = func.(input, dir)
+        {result, metadata}
+      end)
+    end
   end
 
   @doc """

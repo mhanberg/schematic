@@ -198,6 +198,14 @@ iex> dump(Bookstore.BooksListResult.schematic(), %Bookstore.BooksListResult{
 }}
 ```
 
+## Telemetry
+
+schematic fires the following events:
+
+- `[:schematic, :unify, :start]` - Fired when unification starts.
+- `[:schematic, :unify, :stop]` - Fired when unification stops.
+- `[:schematic, :unify, :exception]` - Fired when unification raises an exception.
+
 <!-- MDOC !-->
 
 ## Installation
