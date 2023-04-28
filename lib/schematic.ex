@@ -353,7 +353,7 @@ defmodule Schematic do
   ## Usage
 
   ```elixir
-  iex> schematic = tuple([str(), int()])
+  iex> schematic = Schematic.tuple([str(), int()])
   iex> {:ok, {"one", 2}} = unify(schematic, {"one", 2})
   iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, {1, "two"})
   ```

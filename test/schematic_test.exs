@@ -1,7 +1,10 @@
 defmodule SchematicTest do
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   import Schematic
+
+  alias SchematicTest.Generators
 
   defmodule Request do
     defstruct [:jsonrpc, :method, :params, :id]
@@ -26,6 +29,14 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
+    test "str/0 properties" do
+      schematic = str()
+
+      check all(input <- StreamData.binary()) do
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
     test "str/1" do
       schematic = str("lsp is kool")
       input = "lsp is kool"
@@ -36,6 +47,14 @@ defmodule SchematicTest do
       schematic = int()
       input = 999
       assert {:ok, input} == unify(schematic, input)
+    end
+
+    test "int/0 properties" do
+      schematic = int()
+
+      check all(input <- StreamData.integer()) do
+        assert {:ok, input} == unify(schematic, input)
+      end
     end
 
     test "int/1" do
@@ -56,14 +75,43 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
+    test "list/0 properties" do
+      schematic = list()
+
+      check all(input <- StreamData.list_of(Generators.json_primitive())) do
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
     test "list/1" do
       schematic = list(int())
       input = [1, 2, 3]
       assert {:ok, input} == unify(schematic, input)
     end
 
+    test "list/1 properties" do
+      check all(
+              data_type <-
+                StreamData.one_of([
+                  StreamData.constant(int()),
+                  StreamData.constant(str()),
+                  StreamData.constant(bool())
+                ]),
+              input <-
+                case data_type.kind do
+                  "integer" -> StreamData.list_of(StreamData.integer())
+                  "string" -> StreamData.list_of(StreamData.binary())
+                  "boolean" -> StreamData.list_of(StreamData.boolean())
+                end
+            ) do
+        schematic = list(data_type)
+
+        assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
     test "tuple/2" do
-      schematic = tuple([int(), str(), map(%{alice: any()})])
+      schematic = Schematic.tuple([int(), str(), map(%{alice: any()})])
 
       input = {1, "2", %{alice: :bob}}
       assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
@@ -75,7 +123,7 @@ defmodule SchematicTest do
     end
 
     test "tuple/2 from list" do
-      schematic = tuple([int(), str(), map(%{alice: any()})], from: :list)
+      schematic = Schematic.tuple([int(), str(), map(%{alice: any()})], from: :list)
 
       input = [1, "2", %{alice: :bob}]
       assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
