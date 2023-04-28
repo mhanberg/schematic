@@ -213,7 +213,7 @@ schematic fires the following events:
 ```elixir
 def deps do
   [
-    {:schematic, "~> 0.0.10"}
+    {:schematic, "~> 0.0.11"}
   ]
 end
 ```
