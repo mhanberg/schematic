@@ -75,6 +75,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
+    # TODO: does a list have to be homogenous in type?
     test "list/0 properties" do
       schematic = list()
 
@@ -91,18 +92,11 @@ defmodule SchematicTest do
 
     test "list/1 properties" do
       check all(
-              data_type <-
-                StreamData.one_of([
-                  StreamData.constant(int()),
-                  StreamData.constant(str()),
-                  StreamData.constant(bool())
-                ]),
+              data_type <- Generators.schematic(),
               input <-
-                case data_type.kind do
-                  "integer" -> StreamData.list_of(StreamData.integer())
-                  "string" -> StreamData.list_of(StreamData.binary())
-                  "boolean" -> StreamData.list_of(StreamData.boolean())
-                end
+                data_type
+                |> Generators.from_schematic()
+                |> StreamData.list_of()
             ) do
         schematic = list(data_type)
 
@@ -120,6 +114,22 @@ defmodule SchematicTest do
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
                unify(schematic, input)
+    end
+
+    test "tuple/2 properties" do
+      check all(
+              ordered_schematics <-
+                StreamData.list_of(Generators.schematic()),
+              input <-
+                ordered_schematics
+                |> Enum.map(&Generators.from_schematic/1)
+                |> StreamData.fixed_list()
+            ) do
+        input = List.to_tuple(input)
+        schematic = Schematic.tuple(ordered_schematics)
+
+        assert {:ok, input} == unify(schematic, input)
+      end
     end
 
     test "tuple/2 from list" do
