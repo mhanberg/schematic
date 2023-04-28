@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.11
+
+* feat: telemetry by @mhanberg in https://github.com/mhanberg/schematic/pull/6
+
 ## v0.0.10
 
 - feat: recursive schematics by @mhanberg in https://github.com/mhanberg/schematic/pull/5
