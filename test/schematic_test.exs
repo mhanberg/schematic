@@ -124,10 +124,12 @@ defmodule SchematicTest do
                 |> Enum.map(&Generators.from_schematic/1)
                 |> StreamData.fixed_list()
             ) do
-        input = List.to_tuple(input)
+        input_as_tuple = List.to_tuple(input)
         schematic = Schematic.tuple(ordered_schematics)
+        schematic_from_list = Schematic.tuple(ordered_schematics, from: :list)
 
-        assert {:ok, input} == unify(schematic, input)
+        assert {:ok, input_as_tuple} == unify(schematic, input_as_tuple)
+        assert {:ok, List.to_tuple(input)} == unify(schematic_from_list, input)
       end
     end
 
