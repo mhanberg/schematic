@@ -1,7 +1,7 @@
 defmodule SchematicTest do
   use ExUnit.Case, async: true
-  use ExUnitProperties
 
+  import ExUnitProperties, only: :macros
   import Schematic
 
   alias SchematicTest.Generators
@@ -29,7 +29,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "str/0 properties" do
+    property "str/0" do
       schematic = str()
 
       check all(input <- StreamData.binary()) do
@@ -49,7 +49,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "int/0 properties" do
+    property "int/0" do
       schematic = int()
 
       check all(input <- StreamData.integer()) do
@@ -75,8 +75,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    # TODO: does a list have to be homogenous in type?
-    test "list/0 properties" do
+    property "list/0" do
       schematic = list()
 
       check all(input <- StreamData.list_of(Generators.json_primitive())) do
@@ -90,7 +89,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "list/1 properties" do
+    property "list/1" do
       check all(
               data_type <- Generators.schematic(),
               input <-
@@ -116,7 +115,7 @@ defmodule SchematicTest do
                unify(schematic, input)
     end
 
-    test "tuple/2 properties" do
+    property "tuple/2" do
       check all(
               ordered_schematics <-
                 StreamData.list_of(Generators.schematic()),
@@ -153,7 +152,7 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "oneof/1 properties" do
+    property "oneof/1" do
       check all(
               schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
               input <-
@@ -177,7 +176,7 @@ defmodule SchematicTest do
       assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
     end
 
-    test "map/1 schematic options properties" do
+    property "map/1 using schematic options" do
       check all(
               schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
               input <-
@@ -192,7 +191,7 @@ defmodule SchematicTest do
       end
     end
 
-    test "map/1 blueprint properties" do
+    property "map/1 using blueprint" do
       check all(
               {blueprint, input} <-
                 StreamData.bind(
