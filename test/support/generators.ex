@@ -24,12 +24,23 @@ defmodule SchematicTest.Generators do
   end
 
   # TODO: find a non-heinous way to generate tuple schematics
-  def schematic() do
+  @doc """
+  Generator for random `Schematic`s.
+
+  ## Options
+
+  * `:excluding` - a list of `Schematic.kind` values that should **not** be generated. Defaults to `[]`.
+     * e.g. `["null", "int"]`
+  """
+  def schematic(opts \\ []) do
+    excluding = Keyword.get(opts, :excluding, [])
+
     [
       int(),
       bool(),
       str(),
       list(),
+      null(),
       map(
         key_schematic: str(),
         value_schematic:
@@ -43,6 +54,7 @@ defmodule SchematicTest.Generators do
           ])
       )
     ]
+    |> Enum.filter(fn %Schematic{kind: kind} -> kind not in excluding end)
     |> Enum.map(&StreamData.constant/1)
     |> StreamData.one_of()
   end
@@ -57,6 +69,9 @@ defmodule SchematicTest.Generators do
 
       "boolean" ->
         StreamData.boolean()
+
+      "null" ->
+        StreamData.constant(nil)
 
       "list" ->
         StreamData.list_of(json_primitive())

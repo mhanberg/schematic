@@ -91,13 +91,13 @@ defmodule SchematicTest do
 
     property "list/1" do
       check all(
-              data_type <- Generators.schematic(),
+              data_schematic <- Generators.schematic(),
               input <-
-                data_type
+                data_schematic
                 |> Generators.from_schematic()
                 |> StreamData.list_of()
             ) do
-        schematic = list(data_type)
+        schematic = list(data_schematic)
 
         assert {:ok, input} == unify(schematic, input)
       end
@@ -217,6 +217,47 @@ defmodule SchematicTest do
         schematic = map(blueprint)
 
         assert {:ok, input} == unify(schematic, input)
+      end
+    end
+
+    property "map/1 with nullable values" do
+      check all(
+              [data_schematic, alternative_data_schematic] <-
+                Generators.schematic(excluding: ["null"])
+                |> StreamData.uniq_list_of(length: 2),
+              non_null_input <-
+                Generators.from_schematic(data_schematic)
+                |> StreamData.bind(&StreamData.constant(%{data: &1})),
+              alternative_input <-
+                Generators.from_schematic(alternative_data_schematic)
+                |> StreamData.bind(&StreamData.constant(%{data: &1}))
+            ) do
+        schematic = map(%{data: nullable(data_schematic)})
+
+        assert {:ok, non_null_input} == unify(schematic, non_null_input)
+        assert {:ok, %{data: nil}} == unify(schematic, %{type: nil})
+        assert {:ok, %{data: nil}} == unify(schematic, %{alt: alternative_input})
+      end
+    end
+
+    property "map/1 with optional keys" do
+      check all(
+              [optional_schematic, data_schematic] <-
+                Generators.schematic()
+                |> StreamData.list_of(length: 2),
+              optional_value <- Generators.from_schematic(optional_schematic),
+              data_value <- Generators.from_schematic(data_schematic)
+            ) do
+        schematic =
+          map(%{
+            optional(:optional) => optional_schematic,
+            data: data_schematic
+          })
+
+        assert {:ok, %{data: data_value}} == unify(schematic, %{data: data_value})
+
+        assert {:ok, %{data: data_value, optional: optional_value}} ==
+                 unify(schematic, %{data: data_value, optional: optional_value})
       end
     end
 
