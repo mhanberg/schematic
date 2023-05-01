@@ -622,7 +622,6 @@ defmodule Schematic do
                     {:ok, output} ->
                       acc =
                         acc
-                        |> Map.delete(from_key)
                         |> Map.put(to_key, output)
 
                       [{:ok, acc}, {:errors, errors}]

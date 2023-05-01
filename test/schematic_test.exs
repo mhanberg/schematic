@@ -627,6 +627,37 @@ defmodule SchematicTest do
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
     end
 
+    property "dumps map with key conversions" do
+      check all(
+              from_keys <- StreamData.uniq_list_of(StreamData.binary(), min_length: 2),
+              to_keys <-
+                StreamData.uniq_list_of(StreamData.binary(), length: Enum.count(from_keys)),
+              schematics <-
+                StreamData.list_of(Generators.schematic(), length: Enum.count(from_keys)),
+              values <-
+                StreamData.bind(StreamData.constant(schematics), fn schems ->
+                  StreamData.fixed_list(Enum.map(schems, &Generators.from_schematic/1))
+                end)
+            ) do
+        schematic =
+          Enum.zip([from_keys, to_keys, schematics])
+          |> Enum.map(fn {from, to, schem} -> {{from, to}, schem} end)
+          |> Map.new()
+          |> map()
+
+        input =
+          Enum.zip(from_keys, values)
+          |> Map.new()
+
+        expected_unify_result =
+          Enum.zip(to_keys, values)
+          |> Map.new()
+
+        assert {:ok, expected_unify_result} == unify(schematic, input)
+        assert {:ok, input} == dump(schematic, expected_unify_result)
+      end
+    end
+
     test "works with schema" do
       schematic = schema(SchematicTest.S3, %{baz: schema(SchematicTest.S4, %{one: str()})})
 
