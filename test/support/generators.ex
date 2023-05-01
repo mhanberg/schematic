@@ -39,8 +39,9 @@ defmodule SchematicTest.Generators do
       int(),
       bool(),
       str(),
-      list(),
       null(),
+      tuple([]),
+      list(),
       map(
         key_schematic: str(),
         value_schematic:
@@ -89,10 +90,7 @@ defmodule SchematicTest.Generators do
           ])
         )
 
-      "tuple" ->
-        json_primitive()
-        |> StreamData.list_of()
-        |> StreamData.map(&List.to_tuple/1)
+      "tuple" -> StreamData.constant({})
     end
   end
 end
