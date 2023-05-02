@@ -373,13 +373,13 @@ defmodule Schematic do
     message = fn -> "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message.())}]" end
     from = Keyword.get(opts, :from, :tuple)
 
-    {condition, to_list} =
+    {condition, to_list, length} =
       case from do
         :list ->
-          {&is_list/1, &Function.identity/1}
+          {&is_list/1, &Function.identity/1, &Enum.count/1}
 
         :tuple ->
-          {&is_tuple/1, &Tuple.to_list/1}
+          {&is_tuple/1, &Tuple.to_list/1, &tuple_size/1}
       end
 
     %Schematic{
@@ -387,28 +387,33 @@ defmodule Schematic do
       message: message,
       unify:
         telemetry_wrap(:tuple, %{from: from}, fn input, dir ->
-          if condition.(input) do
-            input
-            |> to_list.()
-            |> Enum.with_index()
-            |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
-              case Enum.at(schematics, idx).unify.(el, dir) do
-                {:ok, output} ->
-                  {:cont, {:ok, [output | acc]}}
+          cond do
+            condition.(input) and length.(input) != Enum.count(schematics) ->
+              {:error, ~s|expected #{message.()}|}
 
-                {:error, _error} ->
-                  {:halt, {:error, ~s|expected #{message.()}|}}
-              end
-            end)
-            |> then(fn
-              {:ok, result} ->
-                {:ok, result |> Enum.reverse() |> List.to_tuple()}
+            condition.(input) ->
+              input
+              |> to_list.()
+              |> Enum.with_index()
+              |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
+                case Enum.at(schematics, idx).unify.(el, dir) do
+                  {:ok, output} ->
+                    {:cont, {:ok, [output | acc]}}
 
-              error ->
-                error
-            end)
-          else
-            {:error, ~s|expected a #{from}|}
+                  {:error, _error} ->
+                    {:halt, {:error, ~s|expected #{message.()}|}}
+                end
+              end)
+              |> then(fn
+                {:ok, result} ->
+                  {:ok, result |> Enum.reverse() |> List.to_tuple()}
+
+                error ->
+                  error
+              end)
+
+            true ->
+              {:error, ~s|expected a #{from}|}
           end
         end)
     }

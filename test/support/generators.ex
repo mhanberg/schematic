@@ -1,6 +1,9 @@
 defmodule SchematicTest.Generators do
   @moduledoc """
-  Generators for property-based testing
+  Generators for property-based testing.
+
+  Every public function in this module returns a `StreamData` generator stream that can be used
+  directly or composed with other functions from the `StreamData` API.
   """
 
   import Schematic
@@ -99,19 +102,35 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  # TODO: at least for "scalar" values, allow a possibility to generate a `oneof` with some random other schematics, in a random order
-
   defp schematic_from_data(data) when is_integer(data),
-    do: StreamData.member_of([int(), int(data)])
+    do:
+      StreamData.member_of([
+        int(),
+        int(data),
+        oneof([int(), schematic() |> Enum.fetch!(1)]),
+        oneof([int(data), schematic() |> Enum.fetch!(1)])
+      ])
 
   defp schematic_from_data(data) when is_binary(data),
-    do: StreamData.member_of([str(), str(data)])
+    do:
+      StreamData.member_of([
+        str(),
+        str(data),
+        oneof([str(), schematic() |> Enum.fetch!(1)]),
+        oneof([str(data), schematic() |> Enum.fetch!(1)])
+      ])
 
   defp schematic_from_data(data) when is_boolean(data),
-    do: StreamData.member_of([bool(), bool(data)])
+    do:
+      StreamData.member_of([
+        bool(),
+        bool(data),
+        oneof([bool(), schematic() |> Enum.fetch!(1)]),
+        oneof([bool(data), schematic() |> Enum.fetch!(1)])
+      ])
 
-  # TODO: also generate `nullable/1` schematics for a random other schematic
-  defp schematic_from_data(data) when is_nil(data), do: StreamData.constant(null())
+  defp schematic_from_data(data) when is_nil(data),
+    do: StreamData.member_of([null(), nullable(schematic() |> Enum.fetch!(1))])
 
   defp schematic_from_data(data) when is_tuple(data) do
     Tuple.to_list(data)
@@ -121,17 +140,20 @@ defmodule SchematicTest.Generators do
   end
 
   defp schematic_from_data(data) when is_list(data) do
-    StreamData.member_of([
-      list(),
+    one_of_schematic =
       Enum.reduce(data, [], fn datum, acc ->
         [schematic_from_data(datum) |> Enum.fetch!(1) | acc]
       end)
       |> oneof()
       |> list()
+
+    StreamData.member_of([
+      list(),
+      one_of_schematic
     ])
   end
 
-  # TODO: generate schematics that allow for nullable and optional keys
+  # TODO: generate schematics that allow for optional keys, and maybe add extra optional keys that aren't present in `data
   defp schematic_from_data(data) when is_map(data) do
     schematic_options =
       Enum.reduce(data, {[], []}, fn {datum_key, datum_value}, {key_types, val_types} ->

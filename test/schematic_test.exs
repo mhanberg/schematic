@@ -82,6 +82,11 @@ defmodule SchematicTest do
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
                unify(schematic, input)
+
+      input = {1, "2", %{alice: :bob}, []}
+
+      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+               unify(schematic, input)
     end
 
     test "tuple/2 from list" do
@@ -94,6 +99,11 @@ defmodule SchematicTest do
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
                unify(schematic, input)
+
+      input = [1, "2", %{alice: :bob}, []]
+
+      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+               unify(schematic, input)
     end
 
     test "oneof/1" do
@@ -103,20 +113,6 @@ defmodule SchematicTest do
 
       input = "hi"
       assert {:ok, input} == unify(schematic, input)
-    end
-
-    property "oneof/1" do
-      check all(
-              schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
-              input <-
-                schematics
-                |> Enum.map(&Generators.from_schematic/1)
-                |> StreamData.one_of()
-            ) do
-        schematic = oneof(schematics)
-
-        assert {:ok, input} == unify(schematic, input)
-      end
     end
 
     test "map/1" do
