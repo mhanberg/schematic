@@ -99,6 +99,8 @@ defmodule SchematicTest.Generators do
     ])
   end
 
+  # TODO: at least for "scalar" values, allow a possibility to generate a `oneof` with some random other schematics, in a random order
+
   defp schematic_from_data(data) when is_integer(data),
     do: StreamData.member_of([int(), int(data)])
 
@@ -108,6 +110,7 @@ defmodule SchematicTest.Generators do
   defp schematic_from_data(data) when is_boolean(data),
     do: StreamData.member_of([bool(), bool(data)])
 
+  # TODO: also generate `nullable/1` schematics for a random other schematic
   defp schematic_from_data(data) when is_nil(data), do: StreamData.constant(null())
 
   defp schematic_from_data(data) when is_tuple(data) do
@@ -128,6 +131,7 @@ defmodule SchematicTest.Generators do
     ])
   end
 
+  # TODO: generate schematics that allow for nullable and optional keys
   defp schematic_from_data(data) when is_map(data) do
     schematic_options =
       Enum.reduce(data, {[], []}, fn {datum_key, datum_value}, {key_types, val_types} ->

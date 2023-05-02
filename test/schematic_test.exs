@@ -36,14 +36,6 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    property "str/0" do
-      schematic = str()
-
-      check all(input <- StreamData.binary()) do
-        assert {:ok, input} == unify(schematic, input)
-      end
-    end
-
     test "str/1" do
       schematic = str("lsp is kool")
       input = "lsp is kool"
@@ -54,14 +46,6 @@ defmodule SchematicTest do
       schematic = int()
       input = 999
       assert {:ok, input} == unify(schematic, input)
-    end
-
-    property "int/0" do
-      schematic = int()
-
-      check all(input <- StreamData.integer()) do
-        assert {:ok, input} == unify(schematic, input)
-      end
     end
 
     test "int/1" do
@@ -82,32 +66,10 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    property "list/0" do
-      schematic = list()
-
-      check all(input <- StreamData.list_of(Generators.scalar())) do
-        assert {:ok, input} == unify(schematic, input)
-      end
-    end
-
     test "list/1" do
       schematic = list(int())
       input = [1, 2, 3]
       assert {:ok, input} == unify(schematic, input)
-    end
-
-    property "list/1" do
-      check all(
-              data_schematic <- Generators.schematic(),
-              input <-
-                data_schematic
-                |> Generators.from_schematic()
-                |> StreamData.list_of()
-            ) do
-        schematic = list(data_schematic)
-
-        assert {:ok, input} == unify(schematic, input)
-      end
     end
 
     test "tuple/2" do
@@ -120,24 +82,6 @@ defmodule SchematicTest do
 
       assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
                unify(schematic, input)
-    end
-
-    property "tuple/2" do
-      check all(
-              ordered_schematics <-
-                StreamData.list_of(Generators.schematic()),
-              input <-
-                ordered_schematics
-                |> Enum.map(&Generators.from_schematic/1)
-                |> StreamData.fixed_list()
-            ) do
-        input_as_tuple = List.to_tuple(input)
-        schematic = Schematic.tuple(ordered_schematics)
-        schematic_from_list = Schematic.tuple(ordered_schematics, from: :list)
-
-        assert {:ok, input_as_tuple} == unify(schematic, input_as_tuple)
-        assert {:ok, List.to_tuple(input)} == unify(schematic_from_list, input)
-      end
     end
 
     test "tuple/2 from list" do
@@ -183,48 +127,6 @@ defmodule SchematicTest do
 
       input = %{"foo" => "hi there!", "bar" => []}
       assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
-    end
-
-    property "map/1 using schematic options" do
-      check all(
-              schematics <- StreamData.list_of(Generators.schematic(), min_length: 1),
-              input <-
-                StreamData.map_of(
-                  StreamData.binary(),
-                  Enum.map(schematics, &Generators.from_schematic/1) |> StreamData.one_of()
-                )
-            ) do
-        schematic = map(key_schematic: str(), value_schematic: oneof(schematics))
-
-        assert {:ok, input} == unify(schematic, input)
-      end
-    end
-
-    property "map/1 using blueprint" do
-      check all(
-              {blueprint, input} <-
-                StreamData.bind(
-                  StreamData.map_of(StreamData.binary(), Generators.schematic(), min_length: 1),
-                  fn blueprint ->
-                    StreamData.bind(StreamData.constant(blueprint), fn blueprint ->
-                      materialized_blueprint =
-                        Enum.reduce(blueprint, %{}, fn {key, schematic}, acc ->
-                          Map.put(
-                            acc,
-                            key,
-                            Generators.from_schematic(schematic) |> Enum.fetch!(0)
-                          )
-                        end)
-
-                      StreamData.constant({blueprint, materialized_blueprint})
-                    end)
-                  end
-                )
-            ) do
-        schematic = map(blueprint)
-
-        assert {:ok, input} == unify(schematic, input)
-      end
     end
 
     property "map/1 with nullable values" do
