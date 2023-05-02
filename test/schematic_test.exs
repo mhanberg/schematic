@@ -19,6 +19,13 @@ defmodule SchematicTest do
   end
 
   describe "unify" do
+    property "input |> unify |> dump == input" do
+      check all({schematic, input} <- Generators.schematic_and_data()) do
+        {:ok, input} ==
+          unify(schematic, input) |> then(fn {:ok, result} -> dump(schematic, result) end)
+      end
+    end
+
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
     end
@@ -78,7 +85,7 @@ defmodule SchematicTest do
     property "list/0" do
       schematic = list()
 
-      check all(input <- StreamData.list_of(Generators.json_primitive())) do
+      check all(input <- StreamData.list_of(Generators.leaf_value())) do
         assert {:ok, input} == unify(schematic, input)
       end
     end
