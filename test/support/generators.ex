@@ -17,14 +17,6 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  def json_value() do
-    StreamData.one_of([
-      leaf_value(),
-      StreamData.map_of(StreamData.binary(), leaf_value()),
-      StreamData.list_of(leaf_value())
-    ])
-  end
-
   # TODO: find a non-heinous way to generate tuple schematics
   @doc """
   Generator for random `Schematic`s.
