@@ -85,7 +85,7 @@ defmodule SchematicTest do
     property "list/0" do
       schematic = list()
 
-      check all(input <- StreamData.list_of(Generators.leaf_value())) do
+      check all(input <- StreamData.list_of(Generators.scalar())) do
         assert {:ok, input} == unify(schematic, input)
       end
     end

@@ -8,7 +8,7 @@ defmodule SchematicTest.Generators do
   @doc """
   Generates structure-less data that has an analogous `Schematic` function. This excludes maps, lists, and tuples.
   """
-  def leaf_value() do
+  def scalar() do
     StreamData.one_of([
       StreamData.binary(),
       StreamData.integer(),
@@ -73,11 +73,11 @@ defmodule SchematicTest.Generators do
       StreamData.boolean(),
       StreamData.binary(),
       StreamData.constant(nil),
-      StreamData.list_of(leaf_value(), max_length: 5) |> StreamData.map(&List.to_tuple/1),
-      StreamData.list_of(leaf_value(), max_length: 5),
+      StreamData.list_of(scalar(), max_length: 5) |> StreamData.map(&List.to_tuple/1),
+      StreamData.list_of(scalar(), max_length: 5),
       StreamData.map_of(
         StreamData.one_of([StreamData.binary(), StreamData.integer()]),
-        leaf_value(),
+        scalar(),
         max_length: 5
       )
     ])
@@ -165,7 +165,7 @@ defmodule SchematicTest.Generators do
         StreamData.constant(nil)
 
       "list" ->
-        StreamData.list_of(leaf_value())
+        StreamData.list_of(scalar())
 
       "map" ->
         StreamData.map_of(
