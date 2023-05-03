@@ -41,7 +41,7 @@ defmodule Schematic.MixProject do
     [
       {:telemetry, "~> 0.4 or ~> 1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:stream_data, "~> 0.5.0", only: :test, runtime: false}
+      {:stream_data, "~> 0.5.0", only: [:dev, :test], runtime: false}
     ]
   end
 
