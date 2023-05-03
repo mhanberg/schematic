@@ -60,46 +60,119 @@ defmodule SchematicTest.Generators do
   @doc """
     Generates a `{schematic, data}` tuple where the former describes the latter.
 
-    The generated data will have up to 9 layers of nesting, including the leaf nodes. The matching schematic may
-    be significantly less complicated, as there is a chance that a deeply nested map is covered by a schematic
-    like `Schematic.map()`.
+    The generated data will have up to 9 layers of nesting, including the leaf nodes.
+
+    The matching schematic may be significantly less complicated, as there is a chance that
+    a deeply nested map is covered by a more general schematic like `Schematic.map()`. A matching
+    schematic may also be more permissive, allowing unification for more than the given datum,
+    such as a datum of `13` generating a schematic like `Schematic.oneof([int(), str()])`.
+
+
+    ## Options
+
+    * `:using` - a list of `Schematic.kind` values that determines the **only** data types that **should** be generated. See the `Schematic` module for available `kind`s. Defaults to `[]`.
+       * e.g. `["null", "integer", "boolean"]`
+    * `:excluding` - a list of `Schematic.kind` values that determines the **only** data types that **should not** be generated. See the `Schematic` module for available `kind`s. This option is mutually exclusive with `:using`; if the `:using` option is **not** an empty list then this option is ignored. Defaults to `[]`. 
+       * e.g. `["null", "integer", "boolean"]`
   """
-  def schematic_and_data() do
-    StreamData.bind(data(0), fn raw_data ->
+  def schematic_and_data(opts \\ []) do
+    StreamData.bind(data(0, opts), fn raw_data ->
       StreamData.constant({schematic_from_data(raw_data) |> Enum.fetch!(1), raw_data})
     end)
   end
 
-  defp data(8) do
-    StreamData.one_of([
-      StreamData.integer(),
-      StreamData.boolean(),
-      StreamData.binary(),
-      StreamData.constant(nil),
-      StreamData.list_of(scalar(), max_length: 5) |> StreamData.map(&List.to_tuple/1),
-      StreamData.list_of(scalar(), max_length: 5),
-      StreamData.map_of(
-        StreamData.one_of([StreamData.binary(), StreamData.integer()]),
-        scalar(),
-        max_length: 5
-      )
-    ])
+  defp data(depth, opts \\ [])
+
+  defp data(8, opts) do
+    using = Keyword.get(opts, :using, [])
+    excluding = Keyword.get(opts, :excluding, [])
+
+    filter =
+      case using do
+        [] -> {:reject, excluding}
+        _ -> {:accept, using}
+      end
+
+    ["integer", "boolean", "null", "string", "list", "tuple", "map"]
+    |> then(fn kinds ->
+      case filter do
+        {:reject, excluding} -> Enum.reject(kinds, &Enum.member?(excluding, &1))
+        {:accept, using} -> Enum.filter(kinds, &Enum.member?(using, &1))
+      end
+    end)
+    |> Enum.map(fn
+      "integer" ->
+        StreamData.integer()
+
+      "boolean" ->
+        StreamData.boolean()
+
+      "null" ->
+        StreamData.constant(nil)
+
+      "string" ->
+        StreamData.binary()
+
+      "tuple" ->
+        StreamData.list_of(scalar(), max_length: 5) |> StreamData.map(&List.to_tuple/1)
+
+      "list" ->
+        StreamData.list_of(scalar(), max_length: 5)
+
+      "map" ->
+        StreamData.map_of(
+          StreamData.one_of([StreamData.binary(), StreamData.integer()]),
+          scalar(),
+          max_length: 5
+        )
+    end)
+    |> StreamData.one_of()
   end
 
-  defp data(depth) do
-    StreamData.one_of([
-      StreamData.integer(),
-      StreamData.boolean(),
-      StreamData.binary(),
-      StreamData.constant(nil),
-      StreamData.list_of(data(depth + 1), max_length: 5) |> StreamData.map(&List.to_tuple/1),
-      StreamData.list_of(data(depth + 1), max_length: 5),
-      StreamData.map_of(
-        StreamData.one_of([StreamData.binary(), StreamData.integer()]),
-        data(depth + 1),
-        max_length: 5
-      )
-    ])
+  defp data(depth, opts) do
+    using = Keyword.get(opts, :using, [])
+    excluding = Keyword.get(opts, :excluding, [])
+
+    filter =
+      case using do
+        [] -> {:reject, excluding}
+        _ -> {:accept, using}
+      end
+
+    ["integer", "boolean", "null", "string", "list", "tuple", "map"]
+    |> then(fn kinds ->
+      case filter do
+        {:reject, excluding} -> Enum.reject(kinds, &Enum.member?(excluding, &1))
+        {:accept, using} -> Enum.filter(kinds, &Enum.member?(using, &1))
+      end
+    end)
+    |> Enum.map(fn
+      "integer" ->
+        StreamData.integer()
+
+      "boolean" ->
+        StreamData.boolean()
+
+      "null" ->
+        StreamData.constant(nil)
+
+      "string" ->
+        StreamData.binary()
+
+      "tuple" ->
+        StreamData.list_of(data(depth + 1), max_length: 5) |> StreamData.map(&List.to_tuple/1)
+
+      "list" ->
+        StreamData.list_of(data(depth + 1), max_length: 5)
+
+      "map" ->
+        StreamData.map_of(
+          StreamData.one_of([StreamData.binary(), StreamData.integer()]),
+          data(depth + 1),
+          max_length: 5
+        )
+    end)
+    |> StreamData.one_of()
   end
 
   defp schematic_from_data(data) when is_integer(data),
