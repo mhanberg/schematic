@@ -127,13 +127,13 @@ defmodule SchematicTest do
 
     property "map/1 with nullable values" do
       check all [data_schematic, alternative_data_schematic] <-
-                  Generators.schematic(excluding: ["null"])
+                  Generators.simple_schematic(excluding: ["null"])
                   |> StreamData.uniq_list_of(length: 2),
                 non_null_input <-
-                  Generators.from_schematic(data_schematic)
+                  Generators.from_simple_schematic(data_schematic)
                   |> StreamData.bind(&StreamData.constant(%{data: &1})),
                 alternative_input <-
-                  Generators.from_schematic(alternative_data_schematic)
+                  Generators.from_simple_schematic(alternative_data_schematic)
                   |> StreamData.bind(&StreamData.constant(%{data: &1})) do
         schematic = map(%{data: nullable(data_schematic)})
 
@@ -145,10 +145,10 @@ defmodule SchematicTest do
 
     property "map/1 with optional keys" do
       check all [optional_schematic, data_schematic] <-
-                  Generators.schematic()
+                  Generators.simple_schematic()
                   |> StreamData.list_of(length: 2),
-                optional_value <- Generators.from_schematic(optional_schematic),
-                data_value <- Generators.from_schematic(data_schematic) do
+                optional_value <- Generators.from_simple_schematic(optional_schematic),
+                data_value <- Generators.from_simple_schematic(data_schematic) do
         schematic =
           map(%{
             optional(:optional) => optional_schematic,
@@ -533,10 +533,10 @@ defmodule SchematicTest do
                 to_keys <-
                   StreamData.uniq_list_of(StreamData.binary(), length: Enum.count(from_keys)),
                 schematics <-
-                  StreamData.list_of(Generators.schematic(), length: Enum.count(from_keys)),
+                  StreamData.list_of(Generators.simple_schematic(), length: Enum.count(from_keys)),
                 values <-
                   StreamData.bind(StreamData.constant(schematics), fn schems ->
-                    StreamData.fixed_list(Enum.map(schems, &Generators.from_schematic/1))
+                    StreamData.fixed_list(Enum.map(schems, &Generators.from_simple_schematic/1))
                   end) do
         schematic =
           Enum.zip([from_keys, to_keys, schematics])
