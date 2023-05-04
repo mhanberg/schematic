@@ -27,23 +27,16 @@ defmodule SchematicTest.Generators do
     end)
   end
 
-  defp data(depth, opts \\ [])
-
-  defp data(8, opts) do
+  defp data(depth, opts \\ []) do
     using = Keyword.get(opts, :using, [])
     excluding = Keyword.get(opts, :excluding, [])
 
-    filter =
-      case using do
-        [] -> {:reject, excluding}
-        _ -> {:accept, using}
-      end
-
     ["integer", "boolean", "null", "string", "list", "tuple", "map"]
     |> then(fn kinds ->
-      case filter do
-        {:reject, excluding} -> Enum.reject(kinds, &Enum.member?(excluding, &1))
-        {:accept, using} -> Enum.filter(kinds, &Enum.member?(using, &1))
+      if Enum.empty?(using) do
+        Enum.reject(kinds, &Enum.member?(excluding, &1))
+      else
+        Enum.filter(kinds, &Enum.member?(using, &1))
       end
     end)
     |> Enum.map(fn
@@ -60,100 +53,66 @@ defmodule SchematicTest.Generators do
         StreamData.binary()
 
       "tuple" ->
-        StreamData.list_of(scalar(), max_length: 5) |> StreamData.map(&List.to_tuple/1)
+        case depth + 1 do
+          8 -> scalar()
+          depth -> data(depth)
+        end
+        |> StreamData.list_of(max_length: 5)
+        |> StreamData.map(&List.to_tuple/1)
 
       "list" ->
-        StreamData.list_of(scalar(), max_length: 5)
+        case depth + 1 do
+          8 -> scalar()
+          depth -> data(depth)
+        end
+        |> StreamData.list_of(max_length: 5)
 
       "map" ->
         StreamData.map_of(
           StreamData.one_of([StreamData.binary(), StreamData.integer()]),
-          scalar(),
+          case depth + 1 do
+            8 -> scalar()
+            depth -> data(depth)
+          end,
           max_length: 5
         )
     end)
     |> StreamData.one_of()
   end
 
-  defp data(depth, opts) do
-    using = Keyword.get(opts, :using, [])
-    excluding = Keyword.get(opts, :excluding, [])
-
-    filter =
-      case using do
-        [] -> {:reject, excluding}
-        _ -> {:accept, using}
-      end
-
-    ["integer", "boolean", "null", "string", "list", "tuple", "map"]
-    |> then(fn kinds ->
-      case filter do
-        {:reject, excluding} -> Enum.reject(kinds, &Enum.member?(excluding, &1))
-        {:accept, using} -> Enum.filter(kinds, &Enum.member?(using, &1))
-      end
-    end)
-    |> Enum.map(fn
-      "integer" ->
-        StreamData.integer()
-
-      "boolean" ->
-        StreamData.boolean()
-
-      "null" ->
-        StreamData.constant(nil)
-
-      "string" ->
-        StreamData.binary()
-
-      "tuple" ->
-        StreamData.list_of(data(depth + 1), max_length: 5) |> StreamData.map(&List.to_tuple/1)
-
-      "list" ->
-        StreamData.list_of(data(depth + 1), max_length: 5)
-
-      "map" ->
-        StreamData.map_of(
-          StreamData.one_of([StreamData.binary(), StreamData.integer()]),
-          data(depth + 1),
-          max_length: 5
-        )
-    end)
-    |> StreamData.one_of()
+  defp schematic_from_data(data) when is_integer(data) do
+    StreamData.member_of([
+      Schematic.int(),
+      Schematic.int(data),
+      Schematic.oneof([Schematic.int(), simple_schematic() |> Enum.fetch!(1)]),
+      Schematic.oneof([Schematic.int(data), simple_schematic() |> Enum.fetch!(1)])
+    ])
   end
 
-  defp schematic_from_data(data) when is_integer(data),
-    do:
-      StreamData.member_of([
-        Schematic.int(),
-        Schematic.int(data),
-        Schematic.oneof([Schematic.int(), simple_schematic() |> Enum.fetch!(1)]),
-        Schematic.oneof([Schematic.int(data), simple_schematic() |> Enum.fetch!(1)])
-      ])
+  defp schematic_from_data(data) when is_binary(data) do
+    StreamData.member_of([
+      Schematic.str(),
+      Schematic.str(data),
+      Schematic.oneof([Schematic.str(), simple_schematic() |> Enum.fetch!(1)]),
+      Schematic.oneof([Schematic.str(data), simple_schematic() |> Enum.fetch!(1)])
+    ])
+  end
 
-  defp schematic_from_data(data) when is_binary(data),
-    do:
-      StreamData.member_of([
-        Schematic.str(),
-        Schematic.str(data),
-        Schematic.oneof([Schematic.str(), simple_schematic() |> Enum.fetch!(1)]),
-        Schematic.oneof([Schematic.str(data), simple_schematic() |> Enum.fetch!(1)])
-      ])
+  defp schematic_from_data(data) when is_boolean(data) do
+    StreamData.member_of([
+      Schematic.bool(),
+      Schematic.bool(data),
+      Schematic.oneof([Schematic.bool(), simple_schematic() |> Enum.fetch!(1)]),
+      Schematic.oneof([Schematic.bool(data), simple_schematic() |> Enum.fetch!(1)])
+    ])
+  end
 
-  defp schematic_from_data(data) when is_boolean(data),
-    do:
-      StreamData.member_of([
-        Schematic.bool(),
-        Schematic.bool(data),
-        Schematic.oneof([Schematic.bool(), simple_schematic() |> Enum.fetch!(1)]),
-        Schematic.oneof([Schematic.bool(data), simple_schematic() |> Enum.fetch!(1)])
-      ])
-
-  defp schematic_from_data(data) when is_nil(data),
-    do:
-      StreamData.member_of([
-        Schematic.null(),
-        Schematic.nullable(simple_schematic() |> Enum.fetch!(1))
-      ])
+  defp schematic_from_data(data) when is_nil(data) do
+    StreamData.member_of([
+      Schematic.null(),
+      Schematic.nullable(simple_schematic() |> Enum.fetch!(1))
+    ])
+  end
 
   defp schematic_from_data(data) when is_tuple(data) do
     Tuple.to_list(data)
