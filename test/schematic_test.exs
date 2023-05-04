@@ -21,8 +21,8 @@ defmodule SchematicTest do
   describe "unify" do
     property "input |> unify |> dump == input" do
       check all {schematic, input} <- Generators.schematic_and_data() do
-        assert {:ok, input} ==
-                 unify(schematic, input) |> then(fn {:ok, result} -> dump(schematic, result) end)
+        assert {:ok, result} = unify(schematic, input)
+        assert {:ok, input} == dump(schematic, result)
       end
     end
 

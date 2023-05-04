@@ -2,6 +2,13 @@ defmodule SchematicTest.Generators do
   @moduledoc """
   `StreamData` generators.
   """
+  unless macro_exported?(Kernel, :then, 2) do
+    defmacrop then(value, fun) do
+      quote do
+        unquote(fun).(unquote(value))
+      end
+    end
+  end
 
   @doc """
   Generates a `{schematic, data}` tuple where the former specifies the latter.
