@@ -21,8 +21,8 @@ defmodule SchematicTest do
   describe "unify" do
     property "input |> unify |> dump == input" do
       check all {schematic, input} <- Generators.schematic_and_data() do
-        {:ok, input} ==
-          unify(schematic, input) |> then(fn {:ok, result} -> dump(schematic, result) end)
+        assert {:ok, input} ==
+                 unify(schematic, input) |> then(fn {:ok, result} -> dump(schematic, result) end)
       end
     end
 
@@ -73,7 +73,7 @@ defmodule SchematicTest do
     end
 
     test "tuple/2" do
-      schematic = Schematic.tuple([int(), str(), map(%{alice: any()})])
+      schematic = tuple([int(), str(), map(%{alice: any()})])
 
       input = {1, "2", %{alice: :bob}}
       assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
@@ -90,7 +90,7 @@ defmodule SchematicTest do
     end
 
     test "tuple/2 from list" do
-      schematic = Schematic.tuple([int(), str(), map(%{alice: any()})], from: :list)
+      schematic = tuple([int(), str(), map(%{alice: any()})], from: :list)
 
       input = [1, "2", %{alice: :bob}]
       assert {:ok, {1, "2", %{alice: :bob}}} == unify(schematic, input)
