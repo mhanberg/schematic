@@ -177,7 +177,7 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  # TODO: generate schematics that allow for optional keys, and maybe add extra optional keys that aren't present in `data
+  # TODO: generate schematics that allow for optional keys, and maybe add extra optional keys that aren't present in `data`
   defp schematic_from_data(data) when is_map(data) do
     schematic_options =
       Enum.reduce(data, {[], []}, fn {datum_key, datum_value}, {key_types, val_types} ->
