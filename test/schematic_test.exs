@@ -80,12 +80,12 @@ defmodule SchematicTest do
 
       input = {"1", 3, []}
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a tuple of {an integer, a string, a map}"} ==
                unify(schematic, input)
 
       input = {1, "2", %{alice: :bob}, []}
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a tuple of {an integer, a string, a map}"} ==
                unify(schematic, input)
     end
 
@@ -97,12 +97,12 @@ defmodule SchematicTest do
 
       input = ["1", 3, []]
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a list of {an integer, a string, a map}"} ==
                unify(schematic, input)
 
       input = [1, "2", %{alice: :bob}, []]
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a list of {an integer, a string, a map}"} ==
                unify(schematic, input)
     end
 

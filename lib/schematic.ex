@@ -355,7 +355,7 @@ defmodule Schematic do
   ```elixir
   iex> schematic = Schematic.tuple([str(), int()])
   iex> {:ok, {"one", 2}} = unify(schematic, {"one", 2})
-  iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, {1, "two"})
+  iex> {:error, "expected a tuple of {a string, an integer}"} = unify(schematic, {1, "two"})
   ```
 
   ### Options
@@ -365,13 +365,13 @@ defmodule Schematic do
   ```elixir
   iex> schematic = tuple([str(), int()], from: :list)
   iex> {:ok, {"one", 2}} = unify(schematic, ["one", 2])
-  iex> {:error, "expected a tuple of [a string, an integer]"} = unify(schematic, [1, "two"])
+  iex> {:error, "expected a list of {a string, an integer}"} = unify(schematic, [1, "two"])
   ```
   """
   @spec tuple([t() | lazy_schematic()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
-    message = fn -> "a tuple of [#{Enum.map_join(schematics, ", ", & &1.message.())}]" end
     from = Keyword.get(opts, :from, :tuple)
+    message = fn -> "a #{from} of {#{Enum.map_join(schematics, ", ", & &1.message.())}}" end
 
     {condition, to_list, length} =
       case from do
@@ -385,37 +385,31 @@ defmodule Schematic do
     %Schematic{
       kind: "tuple",
       message: message,
-      unify:
-        telemetry_wrap(:tuple, %{from: from}, fn input, dir ->
-          cond do
-            condition.(input) and length.(input) != Enum.count(schematics) ->
-              {:error, ~s|expected #{message.()}|}
+      unify: fn input, dir ->
+        if condition.(input) and length.(input) == Enum.count(schematics) do
+          input
+          |> to_list.()
+          |> Enum.with_index()
+          |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
+            case Enum.at(schematics, idx).unify.(el, dir) do
+              {:ok, output} ->
+                {:cont, {:ok, [output | acc]}}
 
-            condition.(input) ->
-              input
-              |> to_list.()
-              |> Enum.with_index()
-              |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
-                case Enum.at(schematics, idx).unify.(el, dir) do
-                  {:ok, output} ->
-                    {:cont, {:ok, [output | acc]}}
+              {:error, _error} ->
+                {:halt, {:error, ~s|expected #{message.()}|}}
+            end
+          end)
+          |> then(fn
+            {:ok, result} ->
+              {:ok, result |> Enum.reverse() |> List.to_tuple()}
 
-                  {:error, _error} ->
-                    {:halt, {:error, ~s|expected #{message.()}|}}
-                end
-              end)
-              |> then(fn
-                {:ok, result} ->
-                  {:ok, result |> Enum.reverse() |> List.to_tuple()}
-
-                error ->
-                  error
-              end)
-
-            true ->
-              {:error, ~s|expected a #{from}|}
-          end
-        end)
+            error ->
+              error
+          end)
+        else
+          {:error, ~s|expected #{message.()}|}
+        end
+      end
     }
   end
 
