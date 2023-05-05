@@ -26,6 +26,26 @@ defmodule SchematicTest do
       end
     end
 
+    # "%Schematic{kind: \"oneof\", debug: \"[%Schematic{kind: \"map\", debug: \"%{}\"}, %Schematic{kind: \"map\", debug: \"%{29 => %Schematic{kind: \"list\", debug: nil}, \"{F),H76!'+?,z/}[\\\\2\\\\L-YPHMp/^6<aL%8j\" => %Schematic{unify: #Function<35.133131330/2 in Schematic.tuple/2>, kind: \"tuple\", message: #Function<34.133131330/0 in Schematic.tuple/2>, debug: \"[%Schematic{unify: #Function<33.133131330/2 in Schematic.telemetry_wrap/3>, kind: \"null\", message: #Function<19.133131330/0 in Schematic.null/0>, debug: nil}, %Schematic{unify: #Function<33.133131330/2 in Schematic.telemetry_wrap/3>, kind: \"null\", message: #Function<19.133131330/0 in Schematic.null/0>, debug: nil}]\"}}\"}]\"}"
+    property "list with a map in it?" do
+      check all {schematic, input} <- Generators.schematic_and_data(using: ["list"]) do
+        assert {:ok, result} = unify(schematic, input)
+        assert {:ok, input} == dump(schematic, result)
+      end
+    end
+
+    test "thing" do
+      input = %{
+        -27 => %{
+          -20 => "'RB 0#Ro,NaGTg\"y,p*~$",
+          -12 => %{-24 => {false, nil, false, {{false, nil, {7}}}}, 22 => %{}},
+          "j`xzfFm[FQj`z1M HTb`\"|" => false
+        }
+      }
+
+      assert {:ok, input} == unify(map(%{}), input)
+    end
+
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
     end

@@ -5,7 +5,7 @@ defmodule Schematic do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  defstruct [:unify, :kind, :message]
+  defstruct [:unify, :kind, :message, :debug]
 
   @typedoc """
   The Schematic data structure.
@@ -15,7 +15,8 @@ defmodule Schematic do
   @opaque t :: %__MODULE__{
             unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
             kind: String.t(),
-            message: function() | nil
+            message: function() | nil,
+            debug: term()
           }
 
   @typedoc """
@@ -306,6 +307,7 @@ defmodule Schematic do
   """
   @spec list(t() | lazy_schematic()) :: t()
   def list(schematic) do
+    debug = schematic
     schematic = fn ->
       case schematic do
         {mod, func, args} ->
@@ -320,6 +322,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "list",
+      debug: debug,
       message: message,
       unify:
         telemetry_wrap(:list, %{}, fn input, dir ->
@@ -384,6 +387,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "tuple",
+      debug: schematics,
       message: message,
       unify: fn input, dir ->
         if condition.(input) and length.(input) == Enum.count(schematics) do
@@ -586,6 +590,7 @@ defmodule Schematic do
   def map(blueprint) when is_map(blueprint) do
     %Schematic{
       kind: "map",
+      debug: blueprint,
       message: fn -> "a map" end,
       unify:
         telemetry_wrap(:map, %{style: :blueprint}, fn input, dir ->
@@ -659,6 +664,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
+      debug: opts,
       message: fn -> "a map" end,
       unify:
         telemetry_wrap(:map, %{style: :open}, fn input, dir ->
@@ -927,6 +933,7 @@ defmodule Schematic do
 
     %Schematic{
       kind: "oneof",
+      debug: schematics,
       message: message,
       unify:
         telemetry_wrap(:oneof, %{style: :sequential}, fn input, dir ->
