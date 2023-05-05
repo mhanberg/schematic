@@ -308,6 +308,7 @@ defmodule Schematic do
   @spec list(t() | lazy_schematic()) :: t()
   def list(schematic) do
     debug = schematic
+
     schematic = fn ->
       case schematic do
         {mod, func, args} ->
