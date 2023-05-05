@@ -1,7 +1,10 @@
 defmodule SchematicTest do
   use ExUnit.Case, async: true
 
+  import ExUnitProperties, only: :macros
   import Schematic
+
+  alias SchematicTest.Generators
 
   defmodule Request do
     defstruct [:jsonrpc, :method, :params, :id]
@@ -16,6 +19,13 @@ defmodule SchematicTest do
   end
 
   describe "unify" do
+    property "input |> unify |> dump == input" do
+      check all {schematic, input} <- Generators.schematic_and_data() do
+        assert {:ok, result} = unify(schematic, input)
+        assert {:ok, input} == dump(schematic, result)
+      end
+    end
+
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
     end
@@ -70,7 +80,12 @@ defmodule SchematicTest do
 
       input = {"1", 3, []}
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a tuple of {an integer, a string, a map}"} ==
+               unify(schematic, input)
+
+      input = {1, "2", %{alice: :bob}, []}
+
+      assert {:error, "expected a tuple of {an integer, a string, a map}"} ==
                unify(schematic, input)
     end
 
@@ -82,7 +97,12 @@ defmodule SchematicTest do
 
       input = ["1", 3, []]
 
-      assert {:error, "expected a tuple of [an integer, a string, a map]"} ==
+      assert {:error, "expected a list of {an integer, a string, a map}"} ==
+               unify(schematic, input)
+
+      input = [1, "2", %{alice: :bob}, []]
+
+      assert {:error, "expected a list of {an integer, a string, a map}"} ==
                unify(schematic, input)
     end
 
@@ -103,6 +123,43 @@ defmodule SchematicTest do
 
       input = %{"foo" => "hi there!", "bar" => []}
       assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
+    end
+
+    property "map/1 with nullable values" do
+      check all [data_schematic, alternative_data_schematic] <-
+                  Generators.simple_schematic(excluding: ["null"])
+                  |> StreamData.uniq_list_of(length: 2),
+                non_null_input <-
+                  Generators.from_simple_schematic(data_schematic)
+                  |> StreamData.bind(&StreamData.constant(%{data: &1})),
+                alternative_input <-
+                  Generators.from_simple_schematic(alternative_data_schematic)
+                  |> StreamData.bind(&StreamData.constant(%{data: &1})) do
+        schematic = map(%{data: nullable(data_schematic)})
+
+        assert {:ok, non_null_input} == unify(schematic, non_null_input)
+        assert {:ok, %{data: nil}} == unify(schematic, %{type: nil})
+        assert {:ok, %{data: nil}} == unify(schematic, %{alt: alternative_input})
+      end
+    end
+
+    property "map/1 with optional keys" do
+      check all [optional_schematic, data_schematic] <-
+                  Generators.simple_schematic()
+                  |> StreamData.list_of(length: 2),
+                optional_value <- Generators.from_simple_schematic(optional_schematic),
+                data_value <- Generators.from_simple_schematic(data_schematic) do
+        schematic =
+          map(%{
+            optional(:optional) => optional_schematic,
+            data: data_schematic
+          })
+
+        assert {:ok, %{data: data_value}} == unify(schematic, %{data: data_value})
+
+        assert {:ok, %{data: data_value, optional: optional_value}} ==
+                 unify(schematic, %{data: data_value, optional: optional_value})
+      end
     end
 
     test "complex" do
@@ -469,6 +526,35 @@ defmodule SchematicTest do
 
       assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
                dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
+    end
+
+    property "dumps map with key conversions" do
+      check all from_keys <- StreamData.uniq_list_of(StreamData.binary(), min_length: 2),
+                to_keys <-
+                  StreamData.uniq_list_of(StreamData.binary(), length: Enum.count(from_keys)),
+                schematics <-
+                  StreamData.list_of(Generators.simple_schematic(), length: Enum.count(from_keys)),
+                values <-
+                  StreamData.bind(StreamData.constant(schematics), fn schems ->
+                    StreamData.fixed_list(Enum.map(schems, &Generators.from_simple_schematic/1))
+                  end) do
+        schematic =
+          Enum.zip([from_keys, to_keys, schematics])
+          |> Enum.map(fn {from, to, schem} -> {{from, to}, schem} end)
+          |> Map.new()
+          |> map()
+
+        input =
+          Enum.zip(from_keys, values)
+          |> Map.new()
+
+        expected_unify_result =
+          Enum.zip(to_keys, values)
+          |> Map.new()
+
+        assert {:ok, expected_unify_result} == unify(schematic, input)
+        assert {:ok, input} == dump(schematic, expected_unify_result)
+      end
     end
 
     test "works with schema" do
