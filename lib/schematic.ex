@@ -274,7 +274,7 @@ defmodule Schematic do
   ```elixir
   iex> schematic = float()
   iex> {:ok, 99.0} = unify(schematic, 99.0) 
-  iex> {:error, "expected an float"} = unify(schematic, :boom)
+  iex> {:error, "expected a float"} = unify(schematic, :boom)
   ```
 
   A float literal.
