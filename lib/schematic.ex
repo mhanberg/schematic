@@ -291,7 +291,7 @@ defmodule Schematic do
       if literal do
         "the literal float #{inspect(literal)}"
       else
-        "an float"
+        "a float"
       end
     end
 
