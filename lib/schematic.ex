@@ -265,6 +265,61 @@ defmodule Schematic do
   end
 
   @doc """
+  Specifies that the data is an float or specified float.
+
+  ## Usage
+
+  Any float
+
+  ```elixir
+  iex> schematic = float()
+  iex> {:ok, 99.0} = unify(schematic, 99.0) 
+  iex> {:error, "expected an float"} = unify(schematic, :boom)
+  ```
+
+  A float literal.
+
+  ```elixir
+  iex> schematic = float(99.0)
+  iex> {:ok, 99.0} = unify(schematic,  99.0)
+  iex> {:error, ~s|expected the literal float 99.0|} = unify(schematic, :ninetynine)
+  ```
+  """
+  @spec float(float() | nil) :: t()
+  def float(literal \\ nil) do
+    message = fn ->
+      if literal do
+        "the literal float #{inspect(literal)}"
+      else
+        "an float"
+      end
+    end
+
+    %Schematic{
+      kind: "float",
+      message: message,
+      unify:
+        telemetry_wrap(:float, %{literal: not is_nil(literal)}, fn input, _dir ->
+          # FIXME: this is ugly
+          cond do
+            is_float(literal) ->
+              if is_float(input) && abs(input - literal) <= 0.01  do #TODO Maybe decmial instead or maybe more precision.
+                {:ok, input}
+              else
+                {:error, ~s|expected #{message.()}|}
+              end
+
+            is_float(input) ->
+              {:ok, input}
+
+            true ->
+              {:error, "expected #{message.()}"}
+          end
+        end)
+    }
+  end
+
+  @doc """
   Specifies that the data is a list of any size and contains anything.
 
   ## Usage

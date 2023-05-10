@@ -54,6 +54,22 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
+    test "float/0" do
+      schematic = float()
+      input = 999.0
+      assert {:ok, input} == unify(schematic, input)
+    end
+
+    test "float/1" do
+      schematic = float(999.0)
+      input = 999.0
+      assert {:ok, input} == unify(schematic, input)
+
+      schematic = float(999.02)
+      input = 999.0
+      assert {:error, "expected the literal float 999.02"} == unify(schematic, input)
+    end
+
     test "map/0" do
       schematic = map()
       input = %{}
