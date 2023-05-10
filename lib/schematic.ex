@@ -265,7 +265,7 @@ defmodule Schematic do
   end
 
   @doc """
-  Specifies that the data is an float or specified float.
+  Specifies that the data is a float or specific float.
 
   ## Usage
 
