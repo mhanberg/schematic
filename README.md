@@ -28,6 +28,8 @@ There are 12 builtin schematics that you can use to build new schematics that fi
 
 Literals can be used as schematics and are unified with `==` semantics.
 
+Struct literals can be used as schematics, and the input is unified by seeing if it is an instance of the given struct.
+
 ## Example
 
 Let's take a look at an example schematic for a JSON-RPC request for a bookstore API.
