@@ -17,6 +17,7 @@ There are 12 builtin schematics that you can use to build new schematics that fi
 - `bool/1`
 - `str/1`
 - `int/1`
+- `float/1`
 - `list/1`
 - `tuple/1`
 - `map/1`
