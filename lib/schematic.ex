@@ -303,7 +303,7 @@ defmodule Schematic do
           # FIXME: this is ugly
           cond do
             is_float(literal) ->
-              if is_float(input) && abs(input - literal) <= 0.01  do
+              if is_float(input) && abs(input - literal) <= 0.01 do
                 {:ok, input}
               else
                 {:error, ~s|expected #{message.()}|}
