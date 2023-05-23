@@ -13,11 +13,10 @@ schematic works by constructing **schematics** that specify your data and can th
 
 There are 12 builtin schematics that you can use to build new schematics that fit your own domain model.
 
-- `null/0`
-- `bool/1`
-- `str/1`
-- `int/1`
-- `float/1`
+- `bool/0`
+- `str/0`
+- `int/0`
+- `float/0`
 - `list/1`
 - `tuple/1`
 - `map/1`
@@ -26,6 +25,8 @@ There are 12 builtin schematics that you can use to build new schematics that fi
 - `any/0`
 - `all/1`
 - `oneof/1`
+
+Literals can be used as schematics and are unified with `==` semantics.
 
 ## Example
 
@@ -51,14 +52,6 @@ defmodule Bookstore do
             DateTime.to_iso8601(i)
         end
       )
-    end
-  end
-
-  defmodule Enum do
-    import Schematic
-
-    def schematic(strings) do
-      oneof(Elixir.Enum.map(strings, &str/1))
     end
   end
 
@@ -111,11 +104,11 @@ defmodule Bookstore do
           nullable(
             map(%{
               {"field", :field} =>
-                SchematicTest.Bookstore.Enum.schematic(["title", "authors", "publication_date"]),
+                oneof(["title", "authors", "publication_date"]),
               {"value", :value} => str()
             })
           ),
-        order: nullable(oneof([str("asc"), str("desc")]))
+        order: nullable(oneof(["asc", "desc"]))
       })
     end
   end
@@ -128,7 +121,7 @@ defmodule Bookstore do
     def schematic() do
       schema(__MODULE__, %{
         id: int(),
-        method: str("books/list"),
+        method: "books/list",
         params: Bookstore.BooksListParams.schematic()
       })
     end

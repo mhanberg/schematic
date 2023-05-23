@@ -37,7 +37,7 @@ defmodule SchematicTest do
     end
 
     test "str/1" do
-      schematic = str("lsp is kool")
+      schematic = "lsp is kool"
       input = "lsp is kool"
       assert {:ok, input} == unify(schematic, input)
     end
@@ -48,9 +48,15 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "int/1" do
-      schematic = int(999)
+    test "int literal" do
+      schematic = 999
       input = 999
+      assert {:ok, input} == unify(schematic, input)
+    end
+
+    test "map literal" do
+      schematic = %{foo: 10}
+      input = %{foo: 10}
       assert {:ok, input} == unify(schematic, input)
     end
 
@@ -60,14 +66,14 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "float/1" do
-      schematic = float(999.0)
+    test "float literal" do
+      schematic = 999.0
       input = 999.0
       assert {:ok, input} == unify(schematic, input)
 
-      schematic = float(999.02)
+      schematic = 999.02
       input = 999.0
-      assert {:error, "expected the literal float 999.02"} == unify(schematic, input)
+      assert {:error, "expected 999.02"} == unify(schematic, input)
     end
 
     test "map/0" do
@@ -184,7 +190,7 @@ defmodule SchematicTest do
           "foo" => oneof([str(), int()]),
           "bar" =>
             map(%{
-              "alice" => str("Alice"),
+              "alice" => "Alice",
               "bob" => list(str()),
               "carol" =>
                 map(%{
@@ -219,7 +225,7 @@ defmodule SchematicTest do
           {"foo", :foo} => oneof([str(), int()]),
           {"bar", :bar} =>
             map(%{
-              {"alice", :alice} => str("Alice"),
+              {"alice", :alice} => "Alice",
               {"bob", :bob} => list(str()),
               {"carol", :carol} =>
                 map(%{
@@ -286,7 +292,7 @@ defmodule SchematicTest do
           {"foo", :foo} => oneof([str(), int()]),
           bar:
             schema(S2, %{
-              {"alice", :alice} => str("Alice"),
+              {"alice", :alice} => "Alice",
               {"bob", :bob} => list(str()),
               {"carol", :carol} =>
                 schema(S3, %{
@@ -333,11 +339,11 @@ defmodule SchematicTest do
       assert {:ok, true} = unify(schematic, true)
       assert {:ok, false} = unify(schematic, false)
 
-      schematic = bool(true)
+      schematic = true
       assert {:ok, true} = unify(schematic, true)
       assert {:error, "expected true"} = unify(schematic, false)
 
-      schematic = bool(false)
+      schematic = false
       assert {:ok, false} = unify(schematic, false)
       assert {:error, "expected false"} = unify(schematic, true)
     end
@@ -393,7 +399,7 @@ defmodule SchematicTest do
         map(%{
           "name" => str(),
           "grade" => int(),
-          "prefix" => oneof([str("Mrs."), str("Mr.")])
+          "prefix" => oneof(["Mrs.", "Mr."])
         })
 
       schematic =
@@ -401,8 +407,8 @@ defmodule SchematicTest do
           "foo" => oneof([str(), int(), list()]),
           "bar" => str(),
           "baz" => list(),
-          "alice" => str("foo"),
-          "bob" => int(99),
+          "alice" => "foo",
+          "bob" => 99,
           "carol" => oneof([null(), int()]),
           "dave" =>
             map(%{
@@ -426,18 +432,17 @@ defmodule SchematicTest do
 
       assert {:error,
               %{
-                "alice" => "expected the literal string \"foo\"",
+                "alice" => "expected \"foo\"",
                 "bar" => "expected a string",
                 "baz" => "expected a list",
-                "bob" => "expected the literal integer 99",
+                "bob" => "expected 99",
                 "dave" => %{
                   "first" => "expected an integer",
                   "second" => "expected a list of either a list or a map",
                   "teacher" => %{
                     "grade" => "expected an integer",
                     "name" => "expected a string",
-                    "prefix" =>
-                      "expected either the literal string \"Mrs.\" or the literal string \"Mr.\""
+                    "prefix" => "expected either \"Mrs.\" or \"Mr.\""
                   }
                 },
                 "foo" => "expected either a string, an integer, or a list"
@@ -613,13 +618,13 @@ defmodule SchematicTest do
       schematic =
         oneof(fn
           %{type: "foo"} ->
-            map(%{type: str("foo")})
+            map(%{type: "foo"})
 
           %{type: "bar"} ->
-            map(%{type: str("bar")})
+            map(%{type: "bar"})
 
           %{type: "baz"} ->
-            map(%{type: str("baz")})
+            map(%{type: "baz"})
 
           %{type: type} ->
             {:error, ~s|unexpected record type "#{type}"|}

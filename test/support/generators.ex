@@ -90,42 +90,42 @@ defmodule SchematicTest.Generators do
   defp schematic_from_data(data) when is_integer(data) do
     StreamData.member_of([
       Schematic.int(),
-      Schematic.int(data),
+      data,
       Schematic.oneof([Schematic.int(), simple_schematic() |> Enum.fetch!(1)]),
-      Schematic.oneof([Schematic.int(data), simple_schematic() |> Enum.fetch!(1)])
+      Schematic.oneof([data, simple_schematic() |> Enum.fetch!(1)])
     ])
   end
 
   defp schematic_from_data(data) when is_float(data) do
     StreamData.member_of([
       Schematic.float(),
-      Schematic.float(data),
+      data,
       Schematic.oneof([Schematic.float(), simple_schematic() |> Enum.fetch!(1)]),
-      Schematic.oneof([Schematic.float(data), simple_schematic() |> Enum.fetch!(1)])
+      Schematic.oneof([data, simple_schematic() |> Enum.fetch!(1)])
     ])
   end
 
   defp schematic_from_data(data) when is_binary(data) do
     StreamData.member_of([
       Schematic.str(),
-      Schematic.str(data),
+      data,
       Schematic.oneof([Schematic.str(), simple_schematic() |> Enum.fetch!(1)]),
-      Schematic.oneof([Schematic.str(data), simple_schematic() |> Enum.fetch!(1)])
+      Schematic.oneof([data, simple_schematic() |> Enum.fetch!(1)])
     ])
   end
 
   defp schematic_from_data(data) when is_boolean(data) do
     StreamData.member_of([
       Schematic.bool(),
-      Schematic.bool(data),
+      data,
       Schematic.oneof([Schematic.bool(), simple_schematic() |> Enum.fetch!(1)]),
-      Schematic.oneof([Schematic.bool(data), simple_schematic() |> Enum.fetch!(1)])
+      Schematic.oneof([data, simple_schematic() |> Enum.fetch!(1)])
     ])
   end
 
   defp schematic_from_data(data) when is_nil(data) do
     StreamData.member_of([
-      Schematic.null(),
+      nil,
       Schematic.nullable(simple_schematic() |> Enum.fetch!(1))
     ])
   end

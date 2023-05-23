@@ -20,14 +20,6 @@ defmodule SchematicTest.Bookstore do
     end
   end
 
-  defmodule Enum do
-    import Schematic
-
-    def schematic(strings) do
-      oneof(Elixir.Enum.map(strings, &str/1))
-    end
-  end
-
   defmodule Author do
     import Schematic
 
@@ -76,12 +68,11 @@ defmodule SchematicTest.Bookstore do
         query:
           nullable(
             map(%{
-              {"field", :field} =>
-                SchematicTest.Bookstore.Enum.schematic(["title", "authors", "publication_date"]),
+              {"field", :field} => oneof(["title", "authors", "publication_date"]),
               {"value", :value} => str()
             })
           ),
-        order: nullable(oneof([str("asc"), str("desc")]))
+        order: nullable(oneof(["asc", "desc"]))
       })
     end
   end
@@ -94,7 +85,7 @@ defmodule SchematicTest.Bookstore do
     def schematic() do
       schema(__MODULE__, %{
         id: int(),
-        method: str("books/list"),
+        method: "books/list",
         params: SchematicTest.Bookstore.BooksListParams.schematic()
       })
     end
