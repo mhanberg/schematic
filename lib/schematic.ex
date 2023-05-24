@@ -23,6 +23,11 @@ defmodule Schematic do
   """
   @type lazy_schematic :: {atom(), atom(), list(any())}
 
+  @typedoc """
+  A literal schematic.
+  """
+  @type literal :: any()
+
   unless macro_exported?(Kernel, :then, 2) do
     defmacrop then(value, fun) do
       quote do
@@ -69,7 +74,7 @@ defmodule Schematic do
   iex> {:error, "expected either null or a string"} = unify(schematic, :boom)
   ```
   """
-  @spec nullable(t() | lazy_schematic()) :: t()
+  @spec nullable(t() | lazy_schematic() | literal()) :: t()
   def nullable(schematic) do
     oneof([nil, schematic])
   end
@@ -279,7 +284,7 @@ defmodule Schematic do
   iex> {:error, "expected a list of either a string or an integer"} = unify(schematic, ["one", 2, :three])
   ```
   """
-  @spec list(t() | lazy_schematic()) :: t()
+  @spec list(t() | lazy_schematic() | literal()) :: t()
   def list(schematic) do
     schematic = fn ->
       case schematic do
@@ -343,7 +348,7 @@ defmodule Schematic do
   iex> {:error, "expected a list of {a string, an integer}"} = unify(schematic, [1, "two"])
   ```
   """
-  @spec tuple([t() | lazy_schematic()], Keyword.t()) :: t()
+  @spec tuple([t() | lazy_schematic() | literal()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
     from = Keyword.get(opts, :from, :tuple)
 
@@ -551,7 +556,7 @@ defmodule Schematic do
   @type map_blueprint_key :: OptionalKey.t() | any()
 
   @typedoc "Map blueprint value."
-  @type map_blueprint_value :: t() | lazy_schematic()
+  @type map_blueprint_value :: t() | lazy_schematic() | literal()
 
   @typedoc """
   The blueprint used to specify a map schematic.
@@ -713,7 +718,7 @@ defmodule Schematic do
   @type schema_blueprint_key :: OptionalKey.t() | atom()
 
   @typedoc "Schema blueprint value."
-  @type schema_blueprint_value :: t() | lazy_schematic()
+  @type schema_blueprint_value :: t() | lazy_schematic() | literal()
 
   @typedoc """
   The blueprint used to specify a schema schematic.
@@ -916,7 +921,7 @@ defmodule Schematic do
   iex> {:error, "expected either a player or a team"} = unify(schematic, %{name: "NBA", sport: "basketball"})
   ```
   """
-  @spec oneof([t() | lazy_schematic()] | (any -> t())) :: t()
+  @spec oneof([t() | lazy_schematic() | literal()] | (any -> t() | literal())) :: t()
   def oneof(schematics) when is_list(schematics) do
     message = fn ->
       "either #{sentence_join(schematics, "or", &Schematic.Unification.message/1)}"
@@ -969,7 +974,7 @@ defmodule Schematic do
 
   See all the other functions for information on how to create schematics.
   """
-  @spec unify(t() | any(), any()) :: any()
+  @spec unify(t() | literal(), any()) :: any()
   def unify(schematic, input) do
     Schematic.Unification.unify(schematic, input, :to)
   end
@@ -979,7 +984,7 @@ defmodule Schematic do
 
   See all the other functions for information on how to create schematics.
   """
-  @spec dump(t() | any(), any()) :: any()
+  @spec dump(t() | literal(), any()) :: any()
   def dump(schematic, input) do
     Schematic.Unification.unify(schematic, input, :from)
   end
@@ -998,7 +1003,7 @@ defmodule Schematic do
   @doc """
   See `map/1` for examples and explanation.
   """
-  @spec optional(any) :: OptionalKey.t()
+  @spec optional(any()) :: OptionalKey.t()
   def optional(key) do
     %OptionalKey{key: key}
   end
