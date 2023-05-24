@@ -348,6 +348,12 @@ defmodule SchematicTest do
       assert {:error, "expected false"} = unify(schematic, true)
     end
 
+    test "struct literal" do
+      schematic = %HTTPRequest{}
+
+      assert {:ok, %HTTPRequest{body: "hi"}} = unify(schematic, %HTTPRequest{body: "hi"})
+    end
+
     test "raw/2" do
       schematic = raw(fn n, _ -> n > 10 end, message: "must be greater than 10")
 
