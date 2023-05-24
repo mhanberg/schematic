@@ -147,6 +147,24 @@ defmodule SchematicTest do
       assert {:ok, %{"foo" => "hi there!"}} == unify(schematic, input)
     end
 
+    test "map/2" do
+      schematic =
+        map(%{
+          "foo" => str()
+        })
+
+      extended_schematic =
+        map(schematic, %{
+          "bar" => int()
+        })
+
+      input = %{"foo" => "hi there!", "bar" => []}
+      assert {:error, %{"bar" => "expected an integer"}} == unify(extended_schematic, input)
+
+      input = %{"foo" => "hi there!", "bar" => 1}
+      assert {:ok, input} == unify(extended_schematic, input)
+    end
+
     property "map/1 with nullable values" do
       check all [data_schematic, alternative_data_schematic] <-
                   Generators.simple_schematic(excluding: ["null"])
