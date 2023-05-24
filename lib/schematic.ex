@@ -5,7 +5,7 @@ defmodule Schematic do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  defstruct [:unify, :kind, :message]
+  defstruct [:unify, :kind, :message, :meta]
 
   @typedoc """
   The Schematic data structure.
@@ -565,6 +565,7 @@ defmodule Schematic do
     %Schematic{
       kind: "map",
       message: fn -> "a map" end,
+      meta: %{blueprint: blueprint},
       unify:
         telemetry_wrap(:map, %{style: :blueprint}, fn input, dir ->
           if is_map(input) do
@@ -673,6 +674,21 @@ defmodule Schematic do
           end
         end)
     }
+  end
+
+  @doc """
+  Map schematics can be extended by using `map/2`.
+
+  ```elixir
+  iex> player = map(%{name: str(), team: str()})
+  iex> baseball_player = map(player, %{home_runs: int()})
+  iex> unify(baseball_player, %{name: "Sammy Sosa", team: "Cubs", home_runs: 609, favorite_food: "Hot Dog"})
+  {:ok, %{name: "Sammy Sosa", team: "Cubs", home_runs: 609}}
+  ```
+  """
+  @spec map(t(), map()) :: t()
+  def map(schematic, blueprint) do
+    map(Map.merge(schematic.meta.blueprint, blueprint))
   end
 
   @doc """
