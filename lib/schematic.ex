@@ -219,8 +219,8 @@ defmodule Schematic do
   iex> {:error, ~s|expected 99.0|} = unify(schematic, :ninetynine)
   ```
   """
-  @spec float(float() | nil) :: t()
-  def float(literal \\ nil) do
+  @spec float() :: t()
+  def float() do
     message = fn ->
       "a float"
     end
@@ -229,7 +229,7 @@ defmodule Schematic do
       kind: "float",
       message: message,
       unify:
-        telemetry_wrap(:float, %{literal: not is_nil(literal)}, fn input, _dir ->
+        telemetry_wrap(:float, %{}, fn input, _dir ->
           if is_float(input) do
             {:ok, input}
           else
