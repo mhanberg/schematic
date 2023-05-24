@@ -3,6 +3,7 @@ defprotocol Schematic.Unification do
   @fallback_to_any true
   def unify(schematic, value, direction)
   def message(schematic)
+  def kind(schematic)
 end
 
 defimpl Schematic.Unification, for: Schematic do
@@ -13,6 +14,8 @@ defimpl Schematic.Unification, for: Schematic do
   def message(schematic) do
     schematic.message.()
   end
+
+  def kind(%{kind: kind}), do: kind
 end
 
 defimpl Schematic.Unification, for: Any do
@@ -34,7 +37,14 @@ defimpl Schematic.Unification, for: Any do
     end
   end
 
+  def message(nil) do
+    "null"
+  end
+
   def message(literal) do
     inspect(literal)
   end
+
+  def kind(nil), do: "null"
+  def kind(_), do: "literal"
 end

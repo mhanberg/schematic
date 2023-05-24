@@ -415,7 +415,7 @@ defmodule SchematicTest do
           "baz" => list(),
           "alice" => "foo",
           "bob" => 99,
-          "carol" => oneof([null(), int()]),
+          "carol" => oneof([nil, int()]),
           "dave" =>
             map(%{
               "first" => int(),
@@ -458,7 +458,7 @@ defmodule SchematicTest do
     test "nullable values" do
       schematic =
         map(%{
-          type: oneof([null(), int()])
+          type: oneof([nil, int()])
         })
 
       assert {:ok, %{type: 10}} == unify(schematic, %{type: 10})
@@ -543,7 +543,7 @@ defmodule SchematicTest do
         map(%{
           {"camelCase", :snake_case} => str(),
           optional({"camelCase2", :snake_case2}) => str(),
-          {"camelCase3", :snake_case3} => oneof([null(), str()])
+          {"camelCase3", :snake_case3} => oneof([nil, str()])
         })
 
       assert {:ok, %{snake_case: "foo!"}} = unify(schematic, %{"camelCase" => "foo!"})

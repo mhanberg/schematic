@@ -58,30 +58,6 @@ defmodule Schematic do
   end
 
   @doc """
-  Specifies that the data can be `nil`.
-
-  ## Usage
-
-  ```elixir
-  iex> schematic = null()
-  iex> {:ok, nil} = unify(schematic, nil)
-  iex> {:error, "expected null"} = unify(schematic, "hi!")
-  ```
-  """
-  @spec null() :: t()
-  def null() do
-    %Schematic{
-      kind: "null",
-      message: fn -> "null" end,
-      unify:
-        telemetry_wrap(:null, %{}, fn
-          nil, _dir -> {:ok, nil}
-          _input, _dir -> {:error, "expected null"}
-        end)
-    }
-  end
-
-  @doc """
   Shortcut for specifiying that a schematic can be either null or the schematic.
 
   ## Usage
@@ -95,7 +71,7 @@ defmodule Schematic do
   """
   @spec nullable(t() | lazy_schematic()) :: t()
   def nullable(schematic) do
-    oneof([null(), schematic])
+    oneof([nil, schematic])
   end
 
   @doc """

@@ -219,7 +219,7 @@ defmodule SchematicTest.Generators do
       Schematic.float(),
       Schematic.bool(),
       Schematic.str(),
-      Schematic.null(),
+      nil,
       Schematic.tuple([]),
       Schematic.list(),
       Schematic.map(
@@ -230,14 +230,20 @@ defmodule SchematicTest.Generators do
             Schematic.int(),
             Schematic.float(),
             Schematic.bool(),
-            Schematic.null(),
+            nil,
             Schematic.tuple([]),
             Schematic.list(),
             Schematic.map()
           ])
       )
     ]
-    |> Enum.filter(fn %Schematic{kind: kind} -> kind not in excluding end)
+    |> Enum.filter(fn
+      %Schematic{kind: kind} ->
+        kind not in excluding
+
+      nil ->
+        "null" not in excluding
+    end)
     |> Enum.map(&StreamData.constant/1)
     |> StreamData.one_of()
   end
@@ -247,8 +253,8 @@ defmodule SchematicTest.Generators do
 
   For generating more complex schematics with matching data, see `schematic_and_data/1`.
   """
-  def from_simple_schematic(%Schematic{kind: kind}) do
-    case kind do
+  def from_simple_schematic(schematic) do
+    case Schematic.Unification.kind(schematic) do
       "integer" ->
         StreamData.integer()
 
