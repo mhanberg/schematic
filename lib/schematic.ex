@@ -115,40 +115,26 @@ defmodule Schematic do
   A boolean literal.
 
   ```elixir
-  iex> schematic = bool(true)
+  iex> schematic = true
   iex> {:ok, true} = unify(schematic, true)
   iex> {:error, "expected true"} = unify(schematic, :boom)
   ```
   """
-  @spec bool(boolean() | nil) :: t()
-  def bool(literal \\ nil) do
+  @spec bool() :: t()
+  def bool() do
     message = fn ->
-      if is_boolean(literal) do
-        "#{inspect(literal)}"
-      else
-        "a boolean"
-      end
+      "a boolean"
     end
 
     %Schematic{
       kind: "boolean",
       message: message,
       unify:
-        telemetry_wrap(:bool, %{literal: not is_nil(literal)}, fn input, _dir ->
-          # FIXME: this is ugly
-          cond do
-            is_boolean(literal) ->
-              if is_boolean(input) && input == literal do
-                {:ok, input}
-              else
-                {:error, ~s|expected #{message.()}|}
-              end
-
-            is_boolean(input) ->
-              {:ok, input}
-
-            true ->
-              {:error, "expected #{message.()}"}
+        telemetry_wrap(:bool, %{}, fn input, _dir ->
+          if is_boolean(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
           end
         end)
     }
@@ -170,40 +156,26 @@ defmodule Schematic do
   A string literal.
 
   ```elixir
-  iex> schematic = str("I 💜 Elixir")
+  iex> schematic = "I 💜 Elixir"
   iex> {:ok, "I 💜 Elixir"} = unify(schematic,  "I 💜 Elixir")
-  iex> {:error, ~s|expected the literal string "I 💜 Elixir"|} = unify(schematic, "I love Ruby")
+  iex> {:error, ~s|expected "I 💜 Elixir"|} = unify(schematic, "I love Ruby")
   ```
   """
-  @spec str(String.t() | nil) :: t()
-  def str(literal \\ nil) do
+  @spec str() :: t()
+  def str() do
     message = fn ->
-      if literal do
-        "the literal string #{inspect(literal)}"
-      else
-        "a string"
-      end
+      "a string"
     end
 
     %Schematic{
       kind: "string",
       message: message,
       unify:
-        telemetry_wrap(:str, %{literal: not is_nil(literal)}, fn input, _dir ->
-          # FIXME: this is ugly
-          cond do
-            is_binary(literal) ->
-              if is_binary(input) && input == literal do
-                {:ok, input}
-              else
-                {:error, ~s|expected #{message.()}|}
-              end
-
-            is_binary(input) ->
-              {:ok, input}
-
-            true ->
-              {:error, "expected #{message.()}"}
+        telemetry_wrap(:str, %{}, fn input, _dir ->
+          if is_binary(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
           end
         end)
     }
@@ -225,40 +197,26 @@ defmodule Schematic do
   A integer literal.
 
   ```elixir
-  iex> schematic = int(99)
+  iex> schematic = 99
   iex> {:ok, 99} = unify(schematic,  99)
-  iex> {:error, ~s|expected the literal integer 99|} = unify(schematic, :ninetynine)
+  iex> {:error, ~s|expected 99|} = unify(schematic, :ninetynine)
   ```
   """
-  @spec int(integer() | nil) :: t()
-  def int(literal \\ nil) do
+  @spec int() :: t()
+  def int() do
     message = fn ->
-      if literal do
-        "the literal integer #{inspect(literal)}"
-      else
-        "an integer"
-      end
+      "an integer"
     end
 
     %Schematic{
       kind: "integer",
       message: message,
       unify:
-        telemetry_wrap(:int, %{literal: not is_nil(literal)}, fn input, _dir ->
-          # FIXME: this is ugly
-          cond do
-            is_integer(literal) ->
-              if is_integer(input) && input == literal do
-                {:ok, input}
-              else
-                {:error, ~s|expected #{message.()}|}
-              end
-
-            is_integer(input) ->
-              {:ok, input}
-
-            true ->
-              {:error, "expected #{message.()}"}
+        telemetry_wrap(:int, %{}, fn input, _dir ->
+          if is_integer(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
           end
         end)
     }
@@ -273,26 +231,22 @@ defmodule Schematic do
 
   ```elixir
   iex> schematic = float()
-  iex> {:ok, 99.0} = unify(schematic, 99.0) 
+  iex> {:ok, 99.0} = unify(schematic, 99.0)
   iex> {:error, "expected a float"} = unify(schematic, :boom)
   ```
 
   A float literal.
 
   ```elixir
-  iex> schematic = float(99.0)
+  iex> schematic = 99.0
   iex> {:ok, 99.0} = unify(schematic,  99.0)
-  iex> {:error, ~s|expected the literal float 99.0|} = unify(schematic, :ninetynine)
+  iex> {:error, ~s|expected 99.0|} = unify(schematic, :ninetynine)
   ```
   """
   @spec float(float() | nil) :: t()
   def float(literal \\ nil) do
     message = fn ->
-      if literal do
-        "the literal float #{inspect(literal)}"
-      else
-        "a float"
-      end
+      "a float"
     end
 
     %Schematic{
@@ -300,20 +254,10 @@ defmodule Schematic do
       message: message,
       unify:
         telemetry_wrap(:float, %{literal: not is_nil(literal)}, fn input, _dir ->
-          # FIXME: this is ugly
-          cond do
-            is_float(literal) ->
-              if is_float(input) && abs(input - literal) <= 0.01 do
-                {:ok, input}
-              else
-                {:error, ~s|expected #{message.()}|}
-              end
-
-            is_float(input) ->
-              {:ok, input}
-
-            true ->
-              {:error, "expected #{message.()}"}
+          if is_float(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
           end
         end)
     }
@@ -426,7 +370,10 @@ defmodule Schematic do
   @spec tuple([t() | lazy_schematic()], Keyword.t()) :: t()
   def tuple(schematics, opts \\ []) do
     from = Keyword.get(opts, :from, :tuple)
-    message = fn -> "a #{from} of {#{Enum.map_join(schematics, ", ", & &1.message.())}}" end
+
+    message = fn ->
+      "a #{from} of {#{Enum.map_join(schematics, ", ", &Schematic.Unification.message/1)}}"
+    end
 
     {condition, to_list, length} =
       case from do
@@ -446,7 +393,7 @@ defmodule Schematic do
           |> to_list.()
           |> Enum.with_index()
           |> Enum.reduce_while({:ok, []}, fn {el, idx}, {:ok, acc} ->
-            case Enum.at(schematics, idx).unify.(el, dir) do
+            case Schematic.Unification.unify(Enum.at(schematics, idx), el, dir) do
               {:ok, output} ->
                 {:cont, {:ok, [output | acc]}}
 
@@ -483,7 +430,7 @@ defmodule Schematic do
 
   ```elixir
   iex> schematic = map(%{
-  ...>   "league" => oneof([str("NBA"), str("MLB"), str("NFL")]),
+  ...>   "league" => oneof(["NBA", "MLB", "NFL"]),
   ...> })
   iex> # ignores the `"team"` key
   iex> {:ok, %{"league" => "NBA"}} == unify(schematic, %{"league" => "NBA", "team" => "Chicago Bulls"})
@@ -491,7 +438,7 @@ defmodule Schematic do
   iex> {:error,
   ...>   %{
   ...>     "league" =>
-  ...>     ~s|expected either the literal string "NBA", the literal string "MLB", or the literal string "NFL"|
+  ...>     ~s|expected either "NBA", "MLB", or "NFL"|
   ...>   }} = unify(schematic, %{"league" => "NHL"})
   ```
 
@@ -672,7 +619,7 @@ defmodule Schematic do
                 if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
                   [{:ok, acc}, {:errors, errors}]
                 else
-                  case schematic.unify.(input[from_key], dir) do
+                  case Schematic.Unification.unify(schematic, input[from_key], dir) do
                     {:ok, output} ->
                       acc =
                         acc
@@ -762,7 +709,7 @@ defmodule Schematic do
   ```elixir
   iex> schematic =
   ...>   schema(HTTPRequest, %{
-  ...>     method: oneof([str("POST"), str("PUT"), str("PATCH")]),
+  ...>     method: oneof(["POST", "PUT", "PATCH"]),
   ...>     body: str()
   ...>   })
   iex> {:ok, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|}} = unify(schematic, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|})
@@ -922,7 +869,8 @@ defmodule Schematic do
         telemetry_wrap(:all, %{}, fn input, dir ->
           errors =
             for schematic <- schematics,
-                {result, message} = __try__(fn -> schematic.unify.(input, dir) end),
+                {result, message} =
+                  __try__(fn -> Schematic.Unification.unify(schematic, input, dir) end),
                 result == :error do
               message
             end
@@ -978,7 +926,9 @@ defmodule Schematic do
   """
   @spec oneof([t() | lazy_schematic()] | (any -> t())) :: t()
   def oneof(schematics) when is_list(schematics) do
-    message = fn -> "either #{sentence_join(schematics, "or", & &1.message.())}" end
+    message = fn ->
+      "either #{sentence_join(schematics, "or", &Schematic.Unification.message/1)}"
+    end
 
     %Schematic{
       kind: "oneof",
@@ -993,7 +943,7 @@ defmodule Schematic do
                   schematic -> schematic
                 end
 
-              with {:error, _} <- schematic.unify.(input, dir), do: false
+              with {:error, _} <- Schematic.Unification.unify(schematic, input, dir), do: false
             end)
 
           with nil <- inquiry, do: {:error, ~s|expected #{message.()}|}
@@ -1007,7 +957,7 @@ defmodule Schematic do
       unify:
         telemetry_wrap(:oneof, %{style: :dispatch}, fn input, dir ->
           with %Schematic{} = schematic <- dispatch.(input) do
-            schematic.unify.(input, dir)
+            Schematic.Unification.unify(schematic, input, dir)
           end
         end)
     }
@@ -1027,9 +977,9 @@ defmodule Schematic do
 
   See all the other functions for information on how to create schematics.
   """
-  @spec unify(t(), any()) :: any()
+  @spec unify(t() | any(), any()) :: any()
   def unify(schematic, input) do
-    schematic.unify.(input, :to)
+    Schematic.Unification.unify(schematic, input, :to)
   end
 
   @doc """
@@ -1037,9 +987,9 @@ defmodule Schematic do
 
   See all the other functions for information on how to create schematics.
   """
-  @spec dump(t(), any()) :: any()
+  @spec dump(t() | any(), any()) :: any()
   def dump(schematic, input) do
-    schematic.unify.(input, :from)
+    Schematic.Unification.unify(schematic, input, :from)
   end
 
   defp telemetry_wrap(type, metadata, func) do
