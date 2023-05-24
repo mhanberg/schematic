@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.1.0
+
+- feat: extend maps with map/2 (#18)
+- feat: remove null schematic, use literal instead (#17)
+- feat: struct schematics (#15)
+- feat!: use literal terms as schematics (#14)
+- feat: float schematic (#13)
+
 ## v0.0.11
 
 * feat: telemetry by @mhanberg in https://github.com/mhanberg/schematic/pull/6
