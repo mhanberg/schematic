@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.1.1
+
+- fix: specs (#20)
+- fix: remove float/1 (#19)
+
 ## v0.1.0
 
 - feat: extend maps with map/2 (#18)
