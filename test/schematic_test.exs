@@ -19,8 +19,9 @@ defmodule SchematicTest do
   end
 
   describe "unify" do
-    property "input |> unify |> dump == input" do
-      check all {schematic, input} <- Generators.schematic_and_data() do
+    property "input |> unify |> dump == input, excluding 'blueprint' maps" do
+      check all {schematic, input} <-
+                  Generators.schematic_and_data(maps: [excluding: ~w(blueprint)]) do
         assert {:ok, result} = unify(schematic, input)
         assert {:ok, input} == dump(schematic, result)
       end

@@ -23,14 +23,21 @@ defmodule SchematicTest.Generators do
 
   ## Options
 
+  For any keyword list that accepts the keys `:using` and `:excluding`: the two options are mutually exclusive, with `:using` taking priority.
+
   * `:using` - a list of `Schematic.kind` values that determines the data types that will be generated. See the `Schematic` module for available `kind`s. Defaults to `[]`.
      * e.g. `["null", "integer", "boolean"]`
-  * `:excluding` - a list of `Schematic.kind` values that determines the data types that will not be generated. See the `Schematic` module for available `kind`s. This option is mutually exclusive with `:using`. Defaults to `[]`.
+  * `:excluding` - a list of `Schematic.kind` values that determines the data types that will not be generated. See the `Schematic` module for available `kind`s. Defaults to `[]`.
      * e.g. `["null", "integer", "boolean"]`
+  * `:maps` - a keyword list to control the characteristics of the generated maps.
+     * options:
+         * `:using` - a list of desired schematic generation strategies containing any or none of: `["blueprint", "schematics"]`. Defaults to `[]`.
+         * `:excluding` - the inverse of `:using`, this option excludes given schematic generation strategies. Defaults to `[]`.
+     * e.g. `[excluding: ["blueprint"]]`
   """
   def schematic_and_data(opts \\ []) do
     StreamData.bind(data(0, opts), fn raw_data ->
-      StreamData.constant({schematic_from_data(raw_data) |> Enum.fetch!(1), raw_data})
+      StreamData.constant({schematic_from_data(raw_data, opts) |> Enum.fetch!(1), raw_data})
     end)
   end
 
@@ -90,7 +97,9 @@ defmodule SchematicTest.Generators do
     |> StreamData.one_of()
   end
 
-  defp schematic_from_data(data) when is_integer(data) do
+  defp schematic_from_data(data, opts)
+
+  defp schematic_from_data(data, _opts) when is_integer(data) do
     StreamData.member_of([
       Schematic.int(),
       data,
@@ -99,14 +108,14 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  defp schematic_from_data(data) when is_atom(data) do
+  defp schematic_from_data(data, _opts) when is_atom(data) do
     StreamData.member_of([
       data,
       Schematic.oneof([data, simple_schematic() |> Enum.fetch!(1)])
     ])
   end
 
-  defp schematic_from_data(data) when is_float(data) do
+  defp schematic_from_data(data, _opts) when is_float(data) do
     StreamData.member_of([
       Schematic.float(),
       data,
@@ -115,7 +124,7 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  defp schematic_from_data(data) when is_binary(data) do
+  defp schematic_from_data(data, _opts) when is_binary(data) do
     StreamData.member_of([
       Schematic.str(),
       data,
@@ -124,7 +133,7 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  defp schematic_from_data(data) when is_boolean(data) do
+  defp schematic_from_data(data, _opts) when is_boolean(data) do
     StreamData.member_of([
       Schematic.bool(),
       data,
@@ -133,24 +142,24 @@ defmodule SchematicTest.Generators do
     ])
   end
 
-  defp schematic_from_data(data) when is_nil(data) do
+  defp schematic_from_data(data, _opts) when is_nil(data) do
     StreamData.member_of([
       nil,
       Schematic.nullable(simple_schematic() |> Enum.fetch!(1))
     ])
   end
 
-  defp schematic_from_data(data) when is_tuple(data) do
+  defp schematic_from_data(data, opts) when is_tuple(data) do
     Tuple.to_list(data)
-    |> Enum.map(fn datum -> schematic_from_data(datum) |> Enum.fetch!(1) end)
+    |> Enum.map(fn datum -> schematic_from_data(datum, opts) |> Enum.fetch!(1) end)
     |> Schematic.tuple()
     |> StreamData.constant()
   end
 
-  defp schematic_from_data(data) when is_list(data) do
+  defp schematic_from_data(data, opts) when is_list(data) do
     one_of_schematic =
       Enum.reduce(data, [], fn datum, acc ->
-        [schematic_from_data(datum) |> Enum.fetch!(1) | acc]
+        [schematic_from_data(datum, opts) |> Enum.fetch!(1) | acc]
       end)
       |> Schematic.oneof()
       |> Schematic.list()
@@ -162,26 +171,59 @@ defmodule SchematicTest.Generators do
   end
 
   # TODO: generate schematics that allow for optional keys, and maybe add extra optional keys that aren't present in `data`
-  defp schematic_from_data(data) when is_map(data) do
-    schematic_options =
+  defp schematic_from_data(data, opts) when is_map(data) do
+    using =
+      opts
+      |> Keyword.get(:maps, [])
+      |> Keyword.get(:using, [])
+
+    excluding =
+      opts
+      |> Keyword.get(:maps, [])
+      |> Keyword.get(:excluding, [])
+
+    schematic_styles = ~w(blueprint schematics)
+
+    schematic_styles =
+      if Enum.empty?(using) do
+        Enum.reject(schematic_styles, &Enum.member?(excluding, &1))
+      else
+        Enum.filter(schematic_styles, &Enum.member?(using, &1))
+      end
+
+    if "blueprint" in schematic_styles do
+      schematic_options =
+        Enum.reduce(data, {[], []}, fn {datum_key, datum_value}, {key_types, val_types} ->
+          {
+            [schematic_from_data(datum_key, opts) |> Enum.fetch!(1) | key_types],
+            [schematic_from_data(datum_value, opts) |> Enum.fetch!(1) | val_types]
+          }
+        end)
+        |> then(fn {key_types, val_types} ->
+          [key_schematic: Schematic.oneof(key_types), value_schematic: Schematic.oneof(val_types)]
+        end)
+        |> Schematic.map()
+
+      blueprint =
+        Enum.reduce(data, %{}, fn {datum_key, datum_value}, acc ->
+          Map.put(acc, datum_key, schematic_from_data(datum_value, opts) |> Enum.fetch!(1))
+        end)
+        |> Schematic.map()
+
+      StreamData.member_of([schematic_options, blueprint])
+    else
       Enum.reduce(data, {[], []}, fn {datum_key, datum_value}, {key_types, val_types} ->
         {
-          [schematic_from_data(datum_key) |> Enum.fetch!(1) | key_types],
-          [schematic_from_data(datum_value) |> Enum.fetch!(1) | val_types]
+          [schematic_from_data(datum_key, opts) |> Enum.fetch!(1) | key_types],
+          [schematic_from_data(datum_value, opts) |> Enum.fetch!(1) | val_types]
         }
       end)
       |> then(fn {key_types, val_types} ->
         [key_schematic: Schematic.oneof(key_types), value_schematic: Schematic.oneof(val_types)]
       end)
       |> Schematic.map()
-
-    blueprint =
-      Enum.reduce(data, %{}, fn {datum_key, datum_value}, acc ->
-        Map.put(acc, datum_key, schematic_from_data(datum_value) |> Enum.fetch!(1))
-      end)
-      |> Schematic.map()
-
-    StreamData.member_of([schematic_options, blueprint])
+      |> StreamData.constant()
+    end
   end
 
   @doc """
