@@ -89,9 +89,16 @@ defmodule SchematicTest do
     end
 
     test "list/1" do
-      schematic = list(int())
-      input = [1, 2, 3]
-      assert {:ok, input} == unify(schematic, input)
+      schematic = list(map(%{name: str()}))
+
+      assert {:ok, [%{name: "mitch"}, %{name: "scott"}]} ==
+               unify(schematic, [%{name: "mitch"}, %{name: "scott"}])
+
+      assert {:error, "expected a list"} == unify(schematic, "foo")
+
+      assert {:error,
+              [{:ok, _}, {:error, %{name: "expected a string"}}, {:error, "expected a map"}]} =
+               unify(schematic, [%{name: "mitch"}, %{name: 1}, 2])
     end
 
     test "tuple/2" do
@@ -462,7 +469,10 @@ defmodule SchematicTest do
                 "bob" => "expected 99",
                 "dave" => %{
                   "first" => "expected an integer",
-                  "second" => "expected a list of either a list or a map",
+                  "second" => [
+                    error: "expected either a list or a map",
+                    error: "expected either a list or a map"
+                  ],
                   "teacher" => %{
                     "grade" => "expected an integer",
                     "name" => "expected a string",
@@ -721,7 +731,7 @@ defmodule SchematicTest do
       assert {:error,
               %{
                 recursive: %{recursive: "expected a map"},
-                recursive_list: "expected a list of a map"
+                recursive_list: [error: "expected a map"]
               }} ==
                unify(schematic, %{
                  foo: "hi",

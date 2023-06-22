@@ -45,6 +45,11 @@ defmodule Schematic do
             }
   end
 
+  defmodule Error do
+    @moduledoc false
+    defstruct []
+  end
+
   @doc """
   Specifies that the data can be **any**thing.
 
@@ -276,12 +281,14 @@ defmodule Schematic do
   @doc """
   Specifies that the data is a list whose items unify to the given schematic.
 
+  Lists whose elements do not unify return a list of `:ok` and `:error` tuples.
+
   ## Usage
 
   ```elixir
   iex> schematic = list(oneof([str(), int()]))
   iex> {:ok, ["one", 2, "three"]} = unify(schematic, ["one", 2, "three"])
-  iex> {:error, "expected a list of either a string or an integer"} = unify(schematic, ["one", 2, :three])
+  iex> {:error, [ok: "one", ok: 2, error: "expected either a string or an integer"]} = unify(schematic, ["one", 2, :three])
   ```
   """
   @spec list(t() | lazy_schematic() | literal()) :: t()
@@ -304,21 +311,18 @@ defmodule Schematic do
       unify:
         telemetry_wrap(:list, %{}, fn input, dir ->
           if is_list(input) do
-            Enum.reduce_while(input, {:ok, []}, fn el, {:ok, acc} ->
+            Enum.map_reduce(input, [], fn el, acc ->
               case schematic.().unify.(el, dir) do
-                {:ok, output} ->
-                  {:cont, {:ok, [output | acc]}}
-
-                {:error, _error} ->
-                  {:halt, {:error, ~s|expected #{message.()}|}}
+                {:ok, output} -> {output, [{:ok, output} | acc]}
+                {:error, error} -> {%Error{}, [{:error, error} | acc]}
               end
             end)
-            |> then(fn
-              {:ok, result} ->
-                {:ok, Enum.reverse(result)}
-
-              error ->
-                error
+            |> then(fn {result, errors} ->
+              if %Error{} in result do
+                {:error, Enum.reverse(errors)}
+              else
+                {:ok, result}
+              end
             end)
           else
             {:error, ~s|expected a list|}
