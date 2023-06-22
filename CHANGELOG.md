@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.2.0](https://github.com/mhanberg/schematic/compare/v0.1.1...v0.2.0) (2023-06-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* comprehensive errors for list schematics ([#26](https://github.com/mhanberg/schematic/issues/26))
+
+### Features
+
+* comprehensive errors for list schematics ([#26](https://github.com/mhanberg/schematic/issues/26)) ([6020981](https://github.com/mhanberg/schematic/commit/602098133f6198b610ab042e07d723fb93b8e648))
+
 ## v0.1.1
 
 - fix: specs (#20)
