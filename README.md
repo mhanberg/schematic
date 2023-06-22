@@ -206,6 +206,7 @@ schematic fires the following events:
 
 ## Installation
 
+<!-- x-release-please-start-version -->
 ```elixir
 def deps do
   [
@@ -213,6 +214,7 @@ def deps do
   ]
 end
 ```
+<!-- x-release-please-end -->
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
