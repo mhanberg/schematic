@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         otp: [23.x, 24.x, 25.x, 26.x]
-        elixir: [1.10.x, 1.11.x, 1.12.x, 1.13.x, 1.14.x]
+        elixir: [1.10.x, 1.11.x, 1.12.x, 1.13.x, 1.14.x, 1.15.x]
         exclude:
           - otp: 26.x
             elixir: 1.10.x
@@ -30,6 +30,8 @@ jobs:
             elixir: 1.10.x
           - otp: 24.x
             elixir: 1.10.x
+          - otp: 23.x
+            elixir: 1.15.x
 
     steps:
     - uses: actions/checkout@v2
@@ -86,7 +88,7 @@ jobs:
     - uses: erlef/setup-beam@v1
       with:
         otp-version: 25.x
-        elixir-version: 1.14.x
+        elixir-version: 1.15.x
     - uses: actions/cache@v3
       with:
         path: |
