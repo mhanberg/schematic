@@ -12,11 +12,11 @@ defmodule Schematic do
 
   This data structure is meant to be opaque to the user, but you can create your own for super niche use cases. But backwards compatiblility of this data structure is not guaranteed.
   """
-  @opaque t :: %__MODULE__{
-            unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
-            kind: String.t(),
-            message: function() | nil
-          }
+  @type t :: %__MODULE__{
+          unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
+          kind: String.t(),
+          message: function() | nil
+        }
 
   @typedoc """
   A lazy reference to a schematic, used to define recursive schematics.
