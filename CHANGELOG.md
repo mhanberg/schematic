@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.2.1](https://github.com/mhanberg/schematic/compare/v0.2.0...v0.2.1) (2023-07-14)
+
+
+### Bug Fixes
+
+* switch opaque to type ([e5591fa](https://github.com/mhanberg/schematic/commit/e5591faf80569d4c33b8b47efa796256dbcde887))
+
 ## [0.2.0](https://github.com/mhanberg/schematic/compare/v0.1.1...v0.2.0) (2023-06-22)
 
 
