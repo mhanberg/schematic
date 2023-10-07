@@ -622,6 +622,19 @@ defmodule SchematicTest do
                dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
     end
 
+    test "works with schema, convert: false" do
+      schematic =
+        schema(SchematicTest.S3, %{baz: schema(SchematicTest.S4, %{one: str()}, convert: false)},
+          convert: false
+        )
+
+      assert {:ok, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}}} ==
+               unify(schematic, %{baz: %{one: "yo"}})
+
+      assert {:ok, %{baz: %{one: "yo"}}} ==
+               dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
+    end
+
     test "works with oneof" do
       schematic =
         map(%{
