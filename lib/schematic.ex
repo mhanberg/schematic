@@ -740,7 +740,7 @@ defmodule Schematic do
     schematic =
       map(
         Map.new(blueprint, fn
-          {%OptionalKey{key: k}, v} when is_atom(k) ->
+          {%OptionalKey{key: k}, v} when convert? and is_atom(k) ->
             {%OptionalKey{key: {to_string(k), k}}, v}
 
           {k, v} when convert? and is_atom(k) ->
