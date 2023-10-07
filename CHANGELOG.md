@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.3.0](https://github.com/mhanberg/schematic/compare/v0.2.1...v0.3.0) (2023-10-07)
+
+
+### Features
+
+* option to disable schema key conversion ([#29](https://github.com/mhanberg/schematic/issues/29)) ([5b3cacf](https://github.com/mhanberg/schematic/commit/5b3cacf68e92b4f87265476c60cd3a783d216bb2))
+
 ## [0.2.1](https://github.com/mhanberg/schematic/compare/v0.2.0...v0.2.1) (2023-07-14)
 
 
