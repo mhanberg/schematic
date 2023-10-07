@@ -703,7 +703,7 @@ defmodule Schematic do
   @doc """
   Specifies a `map/1` schematic that is then hydrated into a struct.
 
-  Works the same as the `map/1` schematic, but will also automatically transform all keys from string keys to atom keys if a key conversion is not already specified.
+  Works the same as the `map/1` schematic, but can also automatically transform all keys from string keys to atom keys if a key conversion is not already specified. This can be disabled by passing the `convert: false` option
 
   Since this schematic hydrates a struct, it is also only capable of having atom keys in the output, whereas a normal map can have arbitrary terms as the key.
 
@@ -716,6 +716,10 @@ defmodule Schematic do
   iex> {:ok, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|}} = unify(schematic, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|})
   iex> {:ok, %{"method" => "POST", "body" => ~s|{"name": "Peter"}|}} = dump(schematic, %HTTPRequest{method: "POST", body: ~s|{"name": "Peter"}|})
   ```
+
+  ### Options
+
+  - `:convert` - Automatically convert string keys to atom keys. Defaults to `true`.
   """
 
   @typedoc "Schema blueprint key."
@@ -729,15 +733,17 @@ defmodule Schematic do
   """
   @type schema_blueprint :: %{schema_blueprint_key() => schema_blueprint_value()}
 
-  @spec schema(atom(), schema_blueprint()) :: t()
-  def schema(mod, blueprint) do
+  @spec schema(atom(), schema_blueprint(), Keyword.t()) :: t()
+  def schema(mod, blueprint, opts \\ []) do
+    convert? = Keyword.get(opts, :convert, true)
+
     schematic =
       map(
         Map.new(blueprint, fn
           {%OptionalKey{key: k}, v} when is_atom(k) ->
             {%OptionalKey{key: {to_string(k), k}}, v}
 
-          {k, v} when is_atom(k) ->
+          {k, v} when convert? and is_atom(k) ->
             {{to_string(k), k}, v}
 
           kv ->
