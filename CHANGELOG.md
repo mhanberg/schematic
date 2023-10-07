@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.3.1](https://github.com/mhanberg/schematic/compare/v0.3.0...v0.3.1) (2023-10-07)
+
+
+### Bug Fixes
+
+* respect `:convert` option for optional schema key ([65b60f3](https://github.com/mhanberg/schematic/commit/65b60f34001a4f90f663ab07b6a9779e192b7b88))
+
 ## [0.3.0](https://github.com/mhanberg/schematic/compare/v0.2.1...v0.3.0) (2023-10-07)
 
 
