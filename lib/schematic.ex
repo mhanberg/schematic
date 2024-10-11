@@ -169,6 +169,37 @@ defmodule Schematic do
   end
 
   @doc """
+  Specifies that the data is an atom.
+
+  ## Usage
+
+  Any string.
+
+  ```elixir
+  iex> schematic = atom()
+  iex> {:ok, :hi} = unify(schematic, :hi)
+  iex> {:error, "expected an atom"} = unify(schematic, "boom")
+  ```
+  """
+  @spec atom() :: t()
+  def atom() do
+    message = fn -> "an atom" end
+
+    %Schematic{
+      kind: "atom",
+      message: message,
+      unify:
+        telemetry_wrap(:str, %{}, fn input, _dir ->
+          if is_atom(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
+          end
+        end)
+    }
+  end
+
+  @doc """
   Specifies that the data is an integer or a specific integer.
 
   ## Usage
