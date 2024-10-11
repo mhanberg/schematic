@@ -15,6 +15,7 @@ There are 12 builtin schematics that you can use to build new schematics that fi
 
 - `bool/0`
 - `str/0`
+- `atom/0`
 - `int/0`
 - `float/0`
 - `list/1`
