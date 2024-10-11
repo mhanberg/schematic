@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.4.0](https://github.com/mhanberg/schematic/compare/v0.3.1...v0.4.0) (2024-10-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* Raises minimum Elixir version to 1.12
+
+### Features
+
+* allow default values for optional map keys ([#32](https://github.com/mhanberg/schematic/issues/32)) ([f4f799c](https://github.com/mhanberg/schematic/commit/f4f799c9450764f2251ef71e43b6082b7ce15272))
+* atom schematic ([#34](https://github.com/mhanberg/schematic/issues/34)) ([b524b5a](https://github.com/mhanberg/schematic/commit/b524b5a0bb5bf9432aad23470b4d9dba6c2ccf65))
+
 ## [0.3.1](https://github.com/mhanberg/schematic/compare/v0.3.0...v0.3.1) (2023-10-07)
 
 
