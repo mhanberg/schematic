@@ -38,10 +38,11 @@ defmodule Schematic do
 
   defmodule OptionalKey do
     @enforce_keys [:key]
-    defstruct [:key]
+    defstruct [:key, default: :__SCHEMATIC_EMPTY_DEFAULT__]
 
     @opaque t :: %__MODULE__{
-              key: {any(), any()} | any()
+              key: {any(), any()} | any(),
+              default: any()
             }
   end
 
@@ -460,16 +461,20 @@ defmodule Schematic do
 
   If the key _is_ provided, it must unify according to the given schematic.
 
-  Likewise, using `dump/2` will also omit that key.
+  You can also provide a default value for an optional key with `optional/2`.
+
+  Likewise, using `dump/2` will also omit that key, unless it has a default value.
 
   ```elixir
   iex> schematic = map(%{
   ...>   "title" => str(),
-  ...>   optional("description") => str()
+  ...>   optional("description") => str(),
+  ...>   optional("kind", "technology") => str()
   ...> })
-  iex> {:ok, %{"title" => "Elixir 101", "description" =>  "An amazing programming course."}} = unify(schematic, %{"title" => "Elixir 101", "description" => "An amazing programming course."})
-  iex> {:ok, %{"title" => "Elixir 101"}} = unify(schematic, %{"title" => "Elixir 101"})
-  iex> {:ok, %{"title" => "Elixir 101"}} = dump(schematic, %{"title" => "Elixir 101"})
+  iex> {:ok, %{"title" => "Elixir 101", "description" =>  "An amazing programming course.", "kind" => "technology"}} = unify(schematic, %{"title" => "Elixir 101", "description" => "An amazing programming course."})
+  iex> {:ok, %{"title" => "Elixir 101", "kind" => "computer science"}} = unify(schematic, %{"title" => "Elixir 101", "kind" => "computer science"})
+  iex> {:ok, %{"title" => "Elixir 101", "kind" => "computer science"}} = dump(schematic, %{"title" => "Elixir 101", "kind" => "computer science"})
+  iex> {:ok, %{"title" => "Elixir 101", "kind" => "technology"}} = dump(schematic, %{"title" => "Elixir 101"})
   ```
 
   ## With `:keys` and `:values`
@@ -603,6 +608,13 @@ defmodule Schematic do
                   end
 
                 if not Map.has_key?(input, from_key) and match?(%OptionalKey{}, bpk) do
+                  acc =
+                    if bpk.default != :__SCHEMATIC_EMPTY_DEFAULT__ do
+                      Map.put(acc, to_key, bpk.default)
+                    else
+                      acc
+                    end
+
                   [{:ok, acc}, {:errors, errors}]
                 else
                   case Schematic.Unification.unify(schematic, input[from_key], dir) do
@@ -1016,5 +1028,15 @@ defmodule Schematic do
   @spec optional(any()) :: OptionalKey.t()
   def optional(key) do
     %OptionalKey{key: key}
+  end
+
+  @doc """
+  Specifies an optional key and also a default value in the case the key is not present.
+
+  See `map/1` for more examples and explanation.
+  """
+  @spec optional(any(), any()) :: OptionalKey.t()
+  def optional(key, default) do
+    %OptionalKey{key: key, default: default}
   end
 end
