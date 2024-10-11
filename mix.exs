@@ -7,7 +7,7 @@ defmodule Schematic.MixProject do
       description: "Data validation and transformation",
       package: package(),
       version: "0.3.1",
-      elixir: "~> 1.10",
+      elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       source_url: "https://github.com/mhanberg/schematic",
@@ -41,7 +41,7 @@ defmodule Schematic.MixProject do
     [
       {:telemetry, "~> 0.4 or ~> 1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:stream_data, "~> 0.5.0", only: [:dev, :test], runtime: false}
+      {:stream_data, "~> 1.1", only: [:dev, :test], runtime: false}
     ]
   end
 

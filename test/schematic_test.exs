@@ -508,6 +508,20 @@ defmodule SchematicTest do
                unify(schematic, %{type: 10, name: 10})
     end
 
+    test "optional keys with default value" do
+      schematic =
+        map(%{
+          optional(:name, "mitch") => str(),
+          type: int()
+        })
+
+      assert {:ok, %{type: 10, name: "mitch"}} == unify(schematic, %{type: 10})
+      assert {:ok, %{type: 10, name: "bob"}} == unify(schematic, %{type: 10, name: "bob"})
+
+      assert {:error, %{name: "expected a string"}} ==
+               unify(schematic, %{type: 10, name: 10})
+    end
+
     test "empty map" do
       schematic = map()
 
