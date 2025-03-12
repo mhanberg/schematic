@@ -14,7 +14,7 @@ defmodule SchematicTest do
     defstruct [:method, :body]
   end
 
-  unless Version.match?(System.version(), "~> 1.11.0 or ~> 1.10.0") do
+  if not Version.match?(System.version(), "~> 1.11.0 or ~> 1.10.0") do
     doctest Schematic, tags: [doctest: true]
   end
 
@@ -26,6 +26,24 @@ defmodule SchematicTest do
       end
     end
 
+    property "literals correctly unify and dump" do
+      check all literal <- StreamData.term() do
+        assert {:ok, result} = unify(literal, literal)
+        assert {:ok, result} = dump(literal, literal)
+      end
+    end
+
+    property "literals return error structs" do
+      check all literal_a <- StreamData.term(),
+                literal_b <- StreamData.term(),
+                literal_a != literal_b do
+        message = "expected #{inspect(literal_a)}"
+
+        assert {:error, %Schematic.Error{input: ^literal_a, message: ^message, kind: "literal"}} =
+                 unify(literal_a, literal_b)
+      end
+    end
+
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
     end
@@ -34,12 +52,9 @@ defmodule SchematicTest do
       schematic = str()
       input = "lsp is kool"
       assert {:ok, input} == unify(schematic, input)
-    end
 
-    test "str/1" do
-      schematic = "lsp is kool"
-      input = "lsp is kool"
-      assert {:ok, input} == unify(schematic, input)
+      assert {:error, %Schematic.Error{input: 1, message: "expected a string", kind: "string"}} ==
+               unify(schematic, 1)
     end
 
     test "int/0" do
@@ -48,32 +63,13 @@ defmodule SchematicTest do
       assert {:ok, input} == unify(schematic, input)
     end
 
-    test "int literal" do
-      schematic = 999
-      input = 999
-      assert {:ok, input} == unify(schematic, input)
-    end
-
-    test "map literal" do
-      schematic = %{foo: 10}
-      input = %{foo: 10}
-      assert {:ok, input} == unify(schematic, input)
-    end
-
     test "float/0" do
       schematic = float()
       input = 999.0
       assert {:ok, input} == unify(schematic, input)
-    end
 
-    test "float literal" do
-      schematic = 999.0
-      input = 999.0
-      assert {:ok, input} == unify(schematic, input)
-
-      schematic = 999.02
-      input = 999.0
-      assert {:error, "expected 999.02"} == unify(schematic, input)
+      assert {:error, %Schematic.Error{input: 999, message: "expected a float", kind: "float"}} ==
+               unify(schematic, 999)
     end
 
     test "map/0" do
@@ -363,14 +359,6 @@ defmodule SchematicTest do
 
       assert {:ok, true} = unify(schematic, true)
       assert {:ok, false} = unify(schematic, false)
-
-      schematic = true
-      assert {:ok, true} = unify(schematic, true)
-      assert {:error, "expected true"} = unify(schematic, false)
-
-      schematic = false
-      assert {:ok, false} = unify(schematic, false)
-      assert {:error, "expected false"} = unify(schematic, true)
     end
 
     test "struct literal" do
@@ -626,7 +614,7 @@ defmodule SchematicTest do
       end
     end
 
-    test "works with schema" do
+    test "schema" do
       schematic = schema(SchematicTest.S3, %{baz: schema(SchematicTest.S4, %{one: str()})})
 
       assert {:ok, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}}} ==
@@ -636,7 +624,7 @@ defmodule SchematicTest do
                dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
     end
 
-    test "works with schema, convert: false" do
+    test "schema, convert: false" do
       schematic =
         schema(SchematicTest.S3, %{baz: schema(SchematicTest.S4, %{one: str()}, convert: false)},
           convert: false
@@ -649,7 +637,7 @@ defmodule SchematicTest do
                dump(schematic, %SchematicTest.S3{baz: %SchematicTest.S4{one: "yo"}})
     end
 
-    test "works with oneof" do
+    test "oneof" do
       schematic =
         map(%{
           {"oneTwo", :one_two} =>
@@ -666,7 +654,7 @@ defmodule SchematicTest do
                dump(schematic, %{one_two: %{five_six: 1}})
     end
 
-    test "works with lists" do
+    test "lists" do
       schematic = list(map(%{{"camelCase", :snake_case} => str()}))
 
       assert {:ok, [%{snake_case: "foo!"}]} = unify(schematic, [%{"camelCase" => "foo!"}])

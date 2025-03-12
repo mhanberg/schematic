@@ -38,7 +38,7 @@ defmodule SchematicTest.Generators do
     using = Keyword.get(opts, :using, [])
     excluding = Keyword.get(opts, :excluding, [])
 
-    ["integer", "boolean", "null", "string", "list", "tuple", "map", "atom"]
+    ["integer", "boolean", "null", "string", "list", "tuple", "map", "atom", "float"]
     |> then(fn kinds ->
       if Enum.empty?(using) do
         Enum.reject(kinds, &Enum.member?(excluding, &1))
@@ -49,6 +49,9 @@ defmodule SchematicTest.Generators do
     |> Enum.map(fn
       "integer" ->
         StreamData.integer()
+
+      "float" ->
+        StreamData.float()
 
       "atom" ->
         StreamData.atom(:alphanumeric)

@@ -5,6 +5,8 @@ defmodule Schematic do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
+  alias Schematic.Error
+
   defstruct [:unify, :kind, :message, :meta]
 
   @typedoc """
@@ -44,11 +46,6 @@ defmodule Schematic do
               key: {any(), any()} | any(),
               default: any()
             }
-  end
-
-  defmodule Error do
-    @moduledoc false
-    defstruct []
   end
 
   @doc """
@@ -150,19 +147,25 @@ defmodule Schematic do
   """
   @spec str() :: t()
   def str() do
-    message = fn ->
-      "a string"
+    kind = "string"
+
+    message = fn input, _dir ->
+      %Error{
+        input: input,
+        kind: kind,
+        message: "expected a string"
+      }
     end
 
     %Schematic{
-      kind: "string",
+      kind: kind,
       message: message,
       unify:
-        telemetry_wrap(:str, %{}, fn input, _dir ->
+        telemetry_wrap(:str, %{}, fn input, dir ->
           if is_binary(input) do
             {:ok, input}
           else
-            {:error, "expected #{message.()}"}
+            {:error, message.(input, dir)}
           end
         end)
     }
@@ -263,19 +266,25 @@ defmodule Schematic do
   """
   @spec float() :: t()
   def float() do
-    message = fn ->
-      "a float"
+    kind = "float"
+
+    message = fn input, _dir ->
+      %Error{
+        input: input,
+        kind: kind,
+        message: "expected a float"
+      }
     end
 
     %Schematic{
       kind: "float",
       message: message,
       unify:
-        telemetry_wrap(:float, %{}, fn input, _dir ->
+        telemetry_wrap(:float, %{}, fn input, dir ->
           if is_float(input) do
             {:ok, input}
           else
-            {:error, "expected #{message.()}"}
+            {:error, message.(input, dir)}
           end
         end)
     }

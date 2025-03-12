@@ -33,7 +33,8 @@ defimpl Schematic.Unification, for: Any do
     if literal == value do
       {:ok, value}
     else
-      {:error, "expected #{inspect(literal)}"}
+      {:error,
+       %Schematic.Error{kind: "literal", message: "expected #{inspect(literal)}", input: literal}}
     end
   end
 
