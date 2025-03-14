@@ -696,6 +696,60 @@ defmodule SchematicTest do
     end
   end
 
+  describe "keyword" do
+    test "unifies" do
+      schematic =
+        keyword(%{
+          optional(:enabled, true) => bool(),
+          optional(:language, "en-us") => str(),
+          optional(:include) => float(),
+          title: str(),
+          description: str()
+        })
+
+      input = [
+        title: "foo",
+        description: "bar",
+        title: "baz",
+        body: "hi"
+      ]
+
+      assert {:ok, result} = unify(schematic, input)
+
+      assert Keyword.get_values(result, :title) == ["foo", "baz"]
+      assert result[:description] == "bar"
+      assert result[:enabled] == true
+      assert result[:language] == "en-us"
+      refute Keyword.has_key?(result, :include)
+    end
+
+    test "errors" do
+      schematic =
+        keyword(%{
+          optional(:enabled, true) => bool(),
+          optional(:language, "en-us") => str(),
+          optional(:include) => float(),
+          title: str(),
+          description: str(),
+          lang: str()
+        })
+
+      input = [
+        title: 1,
+        description: :bar,
+        title: 1.0
+      ]
+
+      assert {:error,
+              [
+                lang: "is missing",
+                title: "expected a string",
+                description: "expected a string",
+                title: "expected a string"
+              ]} == unify(schematic, input)
+    end
+  end
+
   describe "dispatch" do
     test "oneof can dispatch to a specific schematic with a closure" do
       schematic =
@@ -792,6 +846,7 @@ defmodule SchematicTest do
   end
 
   describe "inspect" do
+    @describetag skip: not Version.match?(System.version(), "~> 1.18")
     test "works" do
       schematic =
         map(%{
@@ -824,23 +879,32 @@ defmodule SchematicTest do
                   "baz" =>
                     oneof([
                       map(%{"one" => int()}),
-                      map(%{"two" => str()})
+                      map(%{"two" => str()}),
+                      keyword(%{foo: str(), bar: keyword(), baz: keyword(values: str())})
                     ])
                 })
             })
         })
 
       assert """
-              map(%{
-                optional({:alice, "ALICE"}, "some default") => tuple([all([raw("fn")])]),
-                "bar" =>
-                  map(%{
-                    "alice" => "Alice",
-                    "bob" => list(str()),
-                    "carol" => map(%{"baz" => oneof([map(%{"one" => int()}), map(%{"two" => str()})])})
-                  }),
-                "foo" => oneof([str(), int()])
-              })
+             map(%{
+               optional({:alice, "ALICE"}, "some default") => tuple([all([raw("fn")])]),
+               "bar" =>
+                 map(%{
+                   "alice" => "Alice",
+                   "bob" => list(str()),
+                   "carol" =>
+                     map(%{
+                       "baz" =>
+                         oneof([
+                           map(%{"one" => int()}),
+                           map(%{"two" => str()}),
+                           keyword(%{foo: str(), bar: keyword(), baz: keyword(values: str())})
+                         ])
+                     })
+                 }),
+               "foo" => oneof([str(), int()])
+             })
              """
              |> Code.format_string!()
              |> IO.iodata_to_binary() == inspect(schematic)

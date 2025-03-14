@@ -11,27 +11,13 @@ jobs:
 
     strategy:
       matrix:
-        otp: [25.x, 26.x, 27.x]
-        elixir: [1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x]
+        otp: [26.x, 27.x]
+        elixir: [1.15.x, 1.16.x, 1.17.x, 1.18.x]
         exclude:
-          - otp: 27.x
-            elixir: 1.12.x
-          - otp: 27.x
-            elixir: 1.13.x
-          - otp: 27.x
-            elixir: 1.14.x
           - otp: 27.x
             elixir: 1.15.x
           - otp: 27.x
             elixir: 1.16.x
-          - otp: 27.x
-            elixir: 1.16.x
-          - otp: 26.x
-            elixir: 1.12.x
-          - otp: 26.x
-            elixir: 1.13.x
-          - otp: 25.x
-            elixir: 1.12.x
 
     steps:
     - uses: actions/checkout@v2
@@ -56,14 +42,17 @@ jobs:
 
   formatter:
     runs-on: ubuntu-latest
-    name: Formatter (1.17.x/27.x)
-
+    name: Formatter (${{matrix.elixir}}/${{matrix.otp}})
+    strategy:
+      matrix:
+        otp: [27.x]
+        elixir: [1.18.x]
     steps:
     - uses: actions/checkout@v2
     - uses: erlef/setup-beam@v1
       with:
-        otp-version: 27.x
-        elixir-version: 1.17.x
+        otp-version: ${{matrix.otp}}
+        elixir-version: ${{matrix.elixir}}
     - uses: actions/cache@v3
       with:
         path: |

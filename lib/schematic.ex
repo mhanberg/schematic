@@ -5,6 +5,7 @@ defmodule Schematic do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
+  @enforce_keys [:unify, :kind, :inspect]
   defstruct [:unify, :kind, :message, :meta, :inspect]
 
   @typedoc """
@@ -467,6 +468,272 @@ defmodule Schematic do
     }
   end
 
+  def keyword() do
+    message = fn ->
+      "a keyword list"
+    end
+
+    %Schematic{
+      kind: "keyword",
+      message: message,
+      inspect: fn _, _ ->
+        "keyword()"
+      end,
+      unify:
+        telemetry_wrap(:keyword, %{}, fn input, _dir ->
+          if Keyword.keyword?(input) do
+            {:ok, input}
+          else
+            {:error, "expected #{message.()}"}
+          end
+        end)
+    }
+  end
+
+  @doc """
+  Specifies that the data is a keyword list with the given keys (literal values) that unify to the provided blueprint.
+
+  Unification errors for keys are returned in a keyword list with the key as the key and the value as the error.
+
+  * Keyword schematics serve as a way to permit certain keys and discard all others.
+  * Keys are non-nullable unless the value schematic is marked with `nullable/1`. This allows the value of the key to be nil.
+  * Keys are considered required unless tagged with `optional/1`. This allows the entire key to be absent from the source data. If the key is present, it must unify according to the given schematic.
+  * Keyword schematics allow multiple instances of the same key.
+
+  ## Basic Usage
+
+  The most basic map schematic can look like the following.
+
+  ```elixir
+  iex> schematic = keyword(%{
+  ...>   league: oneof(["NBA", "MLB", "NFL"]),
+  ...> })
+  iex> # ignores the `"team"` key
+  iex> {:ok, [league: "NBA"]} == unify(schematic, [league: "NBA", team: "Chicago Bulls"])
+  true
+  iex> {:error,
+  ...>   [
+  ...>     league: ~s|expected either "NBA", "MLB", or "NFL"|
+  ...>   ]} = unify(schematic, [league: "NHL"])
+  ```
+
+  ## With a permissive keyword list
+
+  If you want to _only_ check that the data is a keyword list, but not the shape, you can use `keyword/0`.
+
+  ```elixir
+  iex> schematic = keyword()
+  iex> {:ok, [league: "NBA"]} = unify(schematic, [league: "NBA"])
+  ```
+
+  ## With `nullable/1`
+
+  Marking a value as nullable using `nullable/1`.
+
+  This means the value of the key can be nil, but the key itself must be present. If you want to omit the key entirely, consider marking the key with `optional/1`.
+
+  ```elixir
+  iex> schematic = keyword(%{
+  ...>   title: str(),
+  ...>   description: nullable(str())
+  ...> })
+  iex> {:ok, [title: "Elixir 101", description: nil]} = unify(schematic, [title: "Elixir 101", description: nil])
+  iex> {:ok, [title: "Elixir 101", description: "An amazing Elixir class"]} = unify(schematic, [title: "Elixir 101", description: "An amazing Elixir class"])
+  ```
+
+  ## With `optional/1`
+
+  Marking a key as optional using `optional/1`.
+
+  This means that you can omit the key from the input and that the unified output will not contain the key if it wasn't in the input.
+
+  If the key _is_ provided, it must unify according to the given schematic.
+
+  You can also provide a default value for an optional key with `optional/2`.
+
+  Likewise, using `dump/2` will also omit that key, unless it has a default value.
+
+  ```elixir
+  iex> schematic = keyword(%{
+  ...>   :title => str(),
+  ...>   optional(:description) => str(),
+  ...>   optional(:kind, "technology") => str()
+  ...> })
+  iex> {:ok, [title: "Elixir 101", description: "An amazing programming course.", kind: "technology"]} = unify(schematic, [title: "Elixir 101", description: "An amazing programming course."])
+  iex> {:ok, [title: "Elixir 101", kind: "computer science"]} = unify(schematic, [title: "Elixir 101", kind: "computer science"])
+  iex> {:ok, [title: "Elixir 101", kind: "computer science"]} = dump(schematic, [title: "Elixir 101", kind: "computer science"])
+  iex> {:ok, [title: "Elixir 101", kind: "technology"]} = dump(schematic, [title: "Elixir 101"])
+  ```
+
+  ## `:values`
+
+  Instead of passing a blueprint, which specifies keys and values, you can pass a `:values` option which provide schematic that all values in the input must unify to.
+
+  ```elixir
+  iex> schematic = keyword(values: oneof([str(), int()]))
+  iex> {:ok, [type: "big", quantity: 99]} = unify(schematic, [type: "big", quantity: 99])
+  iex> {:error, [quantity: "expected either a string or an integer"]} = unify(schematic, [type: "big", quantity: [99]])
+  ```
+
+  ## Recursive Schematics
+
+  See `map/1` for more information on recursive schematics
+  """
+
+  def keyword(blueprint_or_opts)
+
+  def keyword(blueprint) when is_map(blueprint) do
+    %Schematic{
+      kind: "keyword list",
+      message: fn -> "a keyword list" end,
+      inspect: fn _, _ ->
+        """
+        keyword(%{#{Enum.map_join(blueprint, ",\n", fn {k, v} -> "#{k}: #{inspect(v)}" end)}})
+        """
+      end,
+      meta: %{blueprint: blueprint},
+      unify:
+        telemetry_wrap(:keyword, %{style: :blueprint}, fn input, dir ->
+          if not is_list(input) do
+            {:error, "expected a keyword list"}
+          else
+            # NOTE: this algorithmn is very similar to the Map algorithm, but is subtly different.
+
+            {optional_keys, required_keys} =
+              blueprint
+              |> Map.keys()
+              |> Enum.split_with(fn key -> is_struct(key, OptionalKey) end)
+
+            Enum.reduce(
+              input,
+              [ok: [], errors: [], keys: MapSet.new(required_keys)],
+              fn {input_key, input_value}, [ok: acc, errors: errors, keys: keys] ->
+                bpk =
+                  Enum.find(Map.keys(blueprint), :__SCHEMATIC_UNKNOWN_KEY__, fn bpk ->
+                    case bpk do
+                      %OptionalKey{key: ^input_key} ->
+                        bpk
+
+                      ^input_key ->
+                        bpk
+
+                      _ ->
+                        false
+                    end
+                  end)
+
+                if bpk == :__SCHEMATIC_UNKNOWN_KEY__ do
+                  [ok: acc, errors: errors, keys: keys]
+                else
+                  schematic =
+                    case blueprint[bpk] do
+                      {mod, func, args} ->
+                        apply(mod, func, args)
+
+                      schematic ->
+                        schematic
+                    end
+
+                  key = with %OptionalKey{key: key} <- bpk, do: key
+
+                  case Schematic.Unification.unify(schematic, input_value, dir) do
+                    {:ok, output} ->
+                      acc = [{key, output} | acc]
+
+                      [ok: acc, errors: errors, keys: MapSet.delete(keys, key)]
+
+                    {:error, error} ->
+                      [ok: acc, errors: [{key, error} | errors], keys: MapSet.delete(keys, key)]
+                  end
+                end
+              end
+            )
+            |> then(fn [ok: ok, errors: errors, keys: keys] ->
+              [ok: ok, errors: errors, keys: Enum.to_list(keys)]
+            end)
+            |> then(fn
+              [ok: output, errors: e, keys: keys] when e == [] and keys == [] ->
+                output =
+                  for %OptionalKey{key: optional_key, default: default} <- optional_keys,
+                      default != :__SCHEMATIC_EMPTY_DEFAULT__,
+                      reduce: output do
+                    output ->
+                      Keyword.put_new(output, optional_key, default)
+                  end
+
+                {:ok, Enum.reverse(output)}
+
+              [ok: _output, errors: errors, keys: keys] ->
+                errors =
+                  for key <- keys, reduce: errors do
+                    errors ->
+                      Keyword.put_new(errors, key, "is missing")
+                  end
+
+                {:error, errors}
+            end)
+          end
+        end)
+    }
+  end
+
+  def keyword(opts) when is_list(opts) do
+    value_schematic = Keyword.get(opts, :values, any())
+
+    %Schematic{
+      kind: "keyword list",
+      message: fn -> "a keyword list" end,
+      inspect: fn _, _ ->
+        opt_string =
+          if opts[:values] do
+            "values: #{inspect(opts[:values])}"
+          else
+            ""
+          end
+
+        "keyword(#{opt_string})"
+      end,
+      unify:
+        telemetry_wrap(:keyword, %{style: :open}, fn input, dir ->
+          if is_list(input) do
+            Enum.reduce(
+              Keyword.keys(input),
+              [ok: [], errors: []],
+              fn input_key, [{:ok, acc}, {:errors, errors}] ->
+                case Schematic.Unification.unify(atom(), input_key, dir) do
+                  {:ok, key_output} ->
+                    for value <- Keyword.get_values(input, key_output),
+                        reduce: [ok: acc, errors: errors] do
+                      [ok: acc, errors: errors] ->
+                        case value_schematic.unify.(value, dir) do
+                          {:ok, value_output} ->
+                            [{:ok, [{key_output, value_output} | acc]}, {:errors, errors}]
+
+                          {:error, error} ->
+                            [{:ok, acc}, {:errors, [{input_key, error} | errors]}]
+                        end
+                    end
+
+                  {:error, _error} ->
+                    # NOTE: we pass just ignore keys which non conforming keys
+                    [{:ok, acc}, {:errors, errors}]
+                end
+              end
+            )
+            |> then(fn
+              [ok: output, errors: e] when e == [] ->
+                {:ok, Enum.reverse(output)}
+
+              [ok: _output, errors: errors] ->
+                {:error, Enum.reverse(errors)}
+            end)
+          else
+            {:error, "expected a keyword list"}
+          end
+        end)
+    }
+  end
+
   @doc """
   Specifies that the data is a map with the given keys (literal values) that unify to the provided blueprint.
 
@@ -494,7 +761,7 @@ defmodule Schematic do
   ...>   }} = unify(schematic, %{"league" => "NHL"})
   ```
 
-  ## With a permissive amp
+  ## With a permissive map
 
   If you want to _only_ check that the data is a map, but not the shape, you can use `map/0`.
 
@@ -576,7 +843,7 @@ defmodule Schematic do
 
   One can define schematics that specify keys whose values are themselves.
 
-  For this to be possible, recursive schematics must terminate some way. This can be achienved by specifying those keys as `optional/1` or within a `oneof/1` schematic.
+  For this to be possible, recursive schematics must terminate some way. This can be achieved by specifying those keys as `optional/1` or within a `oneof/1` schematic.
 
   Recursive schematics are specified as a MFA tuple, `t:lazy_schematic/0`.
 
@@ -654,7 +921,9 @@ defmodule Schematic do
       meta: %{blueprint: blueprint},
       unify:
         telemetry_wrap(:map, %{style: :blueprint}, fn input, dir ->
-          if is_map(input) do
+          if not is_map(input) do
+            {:error, "expected a map"}
+          else
             bp_keys = Map.keys(blueprint)
 
             Enum.reduce(
@@ -722,8 +991,6 @@ defmodule Schematic do
               [ok: _output, errors: errors] ->
                 {:error, errors}
             end)
-          else
-            {:error, "expected a map"}
           end
         end)
     }
