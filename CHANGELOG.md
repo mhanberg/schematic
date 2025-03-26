@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.5.0](https://github.com/mhanberg/schematic/compare/v0.4.0...v0.5.0) (2025-03-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* correctly handle required map keys with nil schematics ([#39](https://github.com/mhanberg/schematic/issues/39))
+
+### Features
+
+* inspect protocol ([#40](https://github.com/mhanberg/schematic/issues/40)) ([b14a6e0](https://github.com/mhanberg/schematic/commit/b14a6e049b22907513612275d7436d9d3a963379))
+* keyword list schematics ([#38](https://github.com/mhanberg/schematic/issues/38)) ([27f5205](https://github.com/mhanberg/schematic/commit/27f52051c141704e0325bcd7b6d954c5f6376a2e))
+
+
+### Bug Fixes
+
+* correctly handle required map keys with nil schematics ([#39](https://github.com/mhanberg/schematic/issues/39)) ([5302f19](https://github.com/mhanberg/schematic/commit/5302f19e01f7f3da1a1563db45b067bacca1cd4d))
+
 ## [0.4.0](https://github.com/mhanberg/schematic/compare/v0.3.1...v0.4.0) (2024-10-11)
 
 
