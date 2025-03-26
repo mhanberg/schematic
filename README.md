@@ -22,6 +22,7 @@ There are 12 builtin schematics that you can use to build new schematics that fi
 - `tuple/1`
 - `map/1`
 - `schema/2`
+- `keyword/1`
 - `raw/2`
 - `any/0`
 - `all/1`
