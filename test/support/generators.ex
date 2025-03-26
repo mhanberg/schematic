@@ -38,7 +38,7 @@ defmodule SchematicTest.Generators do
     using = Keyword.get(opts, :using, [])
     excluding = Keyword.get(opts, :excluding, [])
 
-    ["integer", "boolean", "null", "string", "list", "tuple", "map", "atom"]
+    ["integer", "float", "boolean", "null", "string", "list", "tuple", "map", "atom"]
     |> then(fn kinds ->
       if Enum.empty?(using) do
         Enum.reject(kinds, &Enum.member?(excluding, &1))
@@ -50,8 +50,11 @@ defmodule SchematicTest.Generators do
       "integer" ->
         StreamData.integer()
 
+      "float" ->
+        StreamData.float()
+
       "atom" ->
-        StreamData.atom(:alphanumeric)
+        atom()
 
       "boolean" ->
         StreamData.boolean()
@@ -60,7 +63,7 @@ defmodule SchematicTest.Generators do
         StreamData.constant(nil)
 
       "string" ->
-        StreamData.binary()
+        StreamData.string(:ascii, max_length: 10)
 
       "tuple" ->
         case depth + 1 do
@@ -79,11 +82,12 @@ defmodule SchematicTest.Generators do
 
       "map" ->
         StreamData.map_of(
-          StreamData.one_of([StreamData.binary(), StreamData.integer()]),
+          StreamData.one_of([StreamData.string(:ascii, max_length: 10), StreamData.integer()]),
           case depth + 1 do
             8 -> scalar()
             depth -> data(depth)
           end,
+          min_length: 1,
           max_length: 5
         )
     end)
@@ -190,12 +194,16 @@ defmodule SchematicTest.Generators do
   def scalar() do
     StreamData.one_of([
       StreamData.binary(),
-      StreamData.atom(:alphanumeric),
+      atom(),
       StreamData.integer(),
       StreamData.float(),
       StreamData.boolean(),
       StreamData.constant(nil)
     ])
+  end
+
+  defp atom() do
+    StreamData.map(StreamData.string(:ascii, max_length: 10), &String.to_atom/1)
   end
 
   @doc """

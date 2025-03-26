@@ -26,6 +26,25 @@ defmodule SchematicTest do
       end
     end
 
+    test "property failure" do
+      schematic =
+        list(
+          oneof([
+            map(%{"foo" => nil}),
+            map(%{"bar" => nil})
+          ])
+        )
+
+      input = [
+        %{"foo" => nil},
+        %{"bar" => nil}
+      ]
+
+      assert {:ok, result = ^input} = unify(schematic, input)
+
+      assert {:ok, input} == dump(schematic, result)
+    end
+
     test "any/0" do
       assert {:ok, "hi"} == unify(any(), "hi")
     end
@@ -185,8 +204,8 @@ defmodule SchematicTest do
         schematic = map(%{data: nullable(data_schematic)})
 
         assert {:ok, non_null_input} == unify(schematic, non_null_input)
-        assert {:ok, %{data: nil}} == unify(schematic, %{type: nil})
-        assert {:ok, %{data: nil}} == unify(schematic, %{alt: alternative_input})
+        assert {:ok, %{data: nil}} == unify(schematic, %{data: nil, type: nil})
+        assert {:ok, %{data: nil}} == unify(schematic, %{data: nil, alt: alternative_input})
       end
     end
 
@@ -466,7 +485,8 @@ defmodule SchematicTest do
                 "alice" => "expected \"foo\"",
                 "bar" => "expected a string",
                 "baz" => "expected a list",
-                "bob" => "expected 99",
+                "bob" => "is missing",
+                "carol" => "is missing",
                 "dave" => %{
                   "first" => "expected an integer",
                   "second" => [
@@ -474,9 +494,9 @@ defmodule SchematicTest do
                     error: "expected either a list or a map"
                   ],
                   "teacher" => %{
-                    "grade" => "expected an integer",
-                    "name" => "expected a string",
-                    "prefix" => "expected either \"Mrs.\" or \"Mr.\""
+                    "grade" => "is missing",
+                    "name" => "is missing",
+                    "prefix" => "is missing"
                   }
                 },
                 "foo" => "expected either a string, an integer, or a list"
@@ -491,20 +511,21 @@ defmodule SchematicTest do
 
       assert {:ok, %{type: 10}} == unify(schematic, %{type: 10})
       assert {:ok, %{type: nil}} == unify(schematic, %{type: nil})
-      assert {:ok, %{type: nil}} == unify(schematic, %{name: "bob"})
+      assert {:error, %{type: "is missing"}} == unify(schematic, %{name: "bob"})
     end
 
     test "optional keys" do
       schematic =
         map(%{
-          optional(:name) => str(),
+          optional(:name) => nullable(str()),
           type: int()
         })
 
       assert {:ok, %{type: 10}} == unify(schematic, %{type: 10})
       assert {:ok, %{type: 10, name: "bob"}} == unify(schematic, %{type: 10, name: "bob"})
+      assert {:ok, %{type: 10, name: nil}} == unify(schematic, %{type: 10, name: nil})
 
-      assert {:error, %{name: "expected a string"}} ==
+      assert {:error, %{name: "expected either null or a string"}} ==
                unify(schematic, %{type: 10, name: 10})
     end
 
@@ -588,13 +609,14 @@ defmodule SchematicTest do
           {"camelCase3", :snake_case3} => oneof([nil, str()])
         })
 
-      assert {:ok, %{snake_case: "foo!"}} = unify(schematic, %{"camelCase" => "foo!"})
+      assert {:ok, %{snake_case: "foo!", snake_case3: nil}} =
+               unify(schematic, %{"camelCase" => "foo!", "camelCase3" => nil})
 
       assert {:ok, %{"camelCase" => "foo!", "camelCase3" => nil}} ==
-               dump(schematic, %{snake_case: "foo!"})
+               dump(schematic, %{snake_case: "foo!", snake_case3: nil})
 
       assert {:ok, %{"camelCase" => "foo!", "camelCase2" => "bar", "camelCase3" => nil}} ==
-               dump(schematic, %{snake_case: "foo!", snake_case2: "bar"})
+               dump(schematic, %{snake_case: "foo!", snake_case2: "bar", snake_case3: nil})
     end
 
     property "dumps map with key conversions" do
@@ -695,7 +717,7 @@ defmodule SchematicTest do
         end)
 
       assert {:ok, %{type: "bar"}} == unify(schematic, %{type: "bar"})
-      assert {:error, %{type: "expected a string"}} == unify(schematic, %{typo: "doink"})
+      assert {:error, %{type: "is missing"}} == unify(schematic, %{typo: "doink"})
       assert {:error, ~s|unexpected record type "doink"|} == unify(schematic, %{type: "doink"})
     end
   end
