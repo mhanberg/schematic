@@ -472,7 +472,7 @@ defmodule Schematic do
 
   Marking a key as nullable using `nullable/1`.
 
-  This means the value of the key can be nil as well as omitting the key entirely. The unified output will always contain the key.
+  The key must be present for nullable values.
 
   ```elixir
   iex> schematic = map(%{
@@ -480,8 +480,9 @@ defmodule Schematic do
   ...>   "description" => nullable(str())
   ...> })
   iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = unify(schematic, %{"title" => "Elixir 101", "description" => nil})
-  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = unify(schematic, %{"title" => "Elixir 101"})
-  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = dump(schematic, %{"title" => "Elixir 101"})
+  iex> {:ok, %{"title" => "Elixir 101", "description" => nil}} = dump(schematic, %{"title" => "Elixir 101", "description" => nil})
+  iex> {:ok, %{"title" => "Elixir 101", "description" =>  "A introductory Elixir lesson"}} = unify(schematic, %{"title" => "Elixir 101", "description" => "A introductory Elixir lesson"})
+  iex> {:ok, %{"title" => "Elixir 101", "description" =>  "A introductory Elixir lesson"}} = dump(schematic, %{"title" => "Elixir 101", "description" => "A introductory Elixir lesson"})
   ```
 
   ## With `optional/1`
@@ -648,23 +649,27 @@ defmodule Schematic do
 
                   [{:ok, acc}, {:errors, errors}]
                 else
-                  case Schematic.Unification.unify(schematic, input[from_key], dir) do
-                    {:ok, output} ->
-                      acc =
-                        acc
-                        |> Map.put(to_key, output)
+                  case Map.fetch(input, from_key) do
+                    :error ->
+                      [{:ok, acc}, {:errors, Map.put(errors, from_key, "is missing")}]
 
-                      [{:ok, acc}, {:errors, errors}]
+                    {:ok, value} ->
+                      case Schematic.Unification.unify(schematic, value, dir) do
+                        {:ok, output} ->
+                          acc = Map.put(acc, to_key, output)
 
-                    {:error, error} ->
-                      # NOTE: in the case of schemas, an optional key will exist because structs always
-                      # have all of their fields. So if they don't unify **and**, the key is optional, and
-                      # the value is nil, we can assume the schematic did not allow nil, and we can omit
-                      # the key from the dump.
-                      if input[from_key] == nil and match?(%OptionalKey{}, bpk) do
-                        [{:ok, acc}, {:errors, errors}]
-                      else
-                        [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                          [{:ok, acc}, {:errors, errors}]
+
+                        {:error, error} ->
+                          # NOTE: in the case of schemas, an optional key will exist because structs always
+                          # have all of their fields. So if they don't unify **and**, the key is optional, and
+                          # the value is nil, we can assume the schematic did not allow nil, and we can omit
+                          # the key from the dump.
+                          if input[from_key] == nil and match?(%OptionalKey{}, bpk) do
+                            [{:ok, acc}, {:errors, errors}]
+                          else
+                            [{:ok, acc}, {:errors, Map.put(errors, from_key, error)}]
+                          end
                       end
                   end
                 end
