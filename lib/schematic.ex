@@ -5,7 +5,7 @@ defmodule Schematic do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  defstruct [:unify, :kind, :message, :meta]
+  defstruct [:unify, :kind, :message, :meta, :inspect]
 
   @typedoc """
   The Schematic data structure.
@@ -65,7 +65,13 @@ defmodule Schematic do
   """
   @spec any() :: t()
   def any() do
-    %Schematic{kind: "any", unify: telemetry_wrap(:any, %{}, fn x, _dir -> {:ok, x} end)}
+    %Schematic{
+      kind: "any",
+      inspect: fn _, _ ->
+        "any()"
+      end,
+      unify: telemetry_wrap(:any, %{}, fn x, _dir -> {:ok, x} end)
+    }
   end
 
   @doc """
@@ -82,7 +88,12 @@ defmodule Schematic do
   """
   @spec nullable(t() | lazy_schematic() | literal()) :: t()
   def nullable(schematic) do
-    oneof([nil, schematic])
+    %{
+      oneof([nil, schematic])
+      | inspect: fn _, _ ->
+          "nullable(#{inspect(schematic)})"
+        end
+    }
   end
 
   @doc """
@@ -116,6 +127,9 @@ defmodule Schematic do
     %Schematic{
       kind: "boolean",
       message: message,
+      inspect: fn _, _ ->
+        "bool()"
+      end,
       unify:
         telemetry_wrap(:bool, %{}, fn input, _dir ->
           if is_boolean(input) do
@@ -157,6 +171,9 @@ defmodule Schematic do
     %Schematic{
       kind: "string",
       message: message,
+      inspect: fn _, _ ->
+        "str()"
+      end,
       unify:
         telemetry_wrap(:str, %{}, fn input, _dir ->
           if is_binary(input) do
@@ -188,6 +205,9 @@ defmodule Schematic do
     %Schematic{
       kind: "atom",
       message: message,
+      inspect: fn _, _ ->
+        "atom()"
+      end,
       unify:
         telemetry_wrap(:str, %{}, fn input, _dir ->
           if is_atom(input) do
@@ -229,6 +249,9 @@ defmodule Schematic do
     %Schematic{
       kind: "integer",
       message: message,
+      inspect: fn _, _ ->
+        "int()"
+      end,
       unify:
         telemetry_wrap(:int, %{}, fn input, _dir ->
           if is_integer(input) do
@@ -270,6 +293,9 @@ defmodule Schematic do
     %Schematic{
       kind: "float",
       message: message,
+      inspect: fn _, _ ->
+        "float()"
+      end,
       unify:
         telemetry_wrap(:float, %{}, fn input, _dir ->
           if is_float(input) do
@@ -299,6 +325,9 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
+      inspect: fn _, _ ->
+        "list()"
+      end,
       unify:
         telemetry_wrap(:list, %{}, fn input, _dir ->
           if is_list(input) do
@@ -324,9 +353,9 @@ defmodule Schematic do
   ```
   """
   @spec list(t() | lazy_schematic() | literal()) :: t()
-  def list(schematic) do
+  def list(schematic_og) do
     schematic = fn ->
-      case schematic do
+      case schematic_og do
         {mod, func, args} ->
           apply(mod, func, args)
 
@@ -340,6 +369,9 @@ defmodule Schematic do
     %Schematic{
       kind: "list",
       message: message,
+      inspect: fn _, _ ->
+        "list(#{inspect(schematic_og)})"
+      end,
       unify:
         telemetry_wrap(:list, %{}, fn input, dir ->
           if is_list(input) do
@@ -404,6 +436,9 @@ defmodule Schematic do
     %Schematic{
       kind: "tuple",
       message: message,
+      inspect: fn _, _ ->
+        "tuple([#{Enum.map_join(schematics, ", ", &inspect(&1))}])"
+      end,
       unify: fn input, dir ->
         if condition.(input) and length.(input) == Enum.count(schematics) do
           input
@@ -610,6 +645,11 @@ defmodule Schematic do
   def map(blueprint) when is_map(blueprint) do
     %Schematic{
       kind: "map",
+      inspect: fn _, _ ->
+        """
+        map(%{#{Enum.map_join(blueprint, ",\n", fn {k, v} -> "  #{inspect(k)} => #{inspect(v)}" end)}})
+        """
+      end,
       message: fn -> "a map" end,
       meta: %{blueprint: blueprint},
       unify:
@@ -695,6 +735,26 @@ defmodule Schematic do
 
     %Schematic{
       kind: "map",
+      inspect: fn _, _ ->
+        opt_strings =
+          Enum.flat_map(
+            [
+              if opts[:keys] do
+                "keys: #{opts[:keys]}"
+              else
+                []
+              end,
+              if opts[:values] do
+                "values: #{opts[:values]}"
+              else
+                []
+              end
+            ],
+            & &1
+          )
+
+        "map(#{Enum.join(opt_strings, ", ")})"
+      end,
       message: fn -> "a map" end,
       unify:
         telemetry_wrap(:map, %{style: :open}, fn input, dir ->
@@ -801,7 +861,10 @@ defmodule Schematic do
 
     %Schematic{
       kind: "#{mod}",
-      message: fn -> "a %#{String.replace(to_string(mod), "Elixir.", "")}{}" end,
+      message: fn -> "a %#{String.replace(inspect(mod), "Elixir.", "")}{}" end,
+      inspect: fn _, _ ->
+        "schema(#{mod}, #{Enum.map_join(blueprint, ",\n", fn k, v -> "#{to_string(k)}: #{inspect(v)}" end)})"
+      end,
       unify:
         telemetry_wrap(:schema, %{mod: mod}, fn input, dir ->
           case dir do
@@ -879,6 +942,9 @@ defmodule Schematic do
 
     %Schematic{
       kind: "function",
+      inspect: fn _, _ ->
+        "raw(\"fn\")"
+      end,
       message: message,
       unify:
         telemetry_wrap(:raw, %{}, fn input, dir ->
@@ -920,6 +986,9 @@ defmodule Schematic do
     %Schematic{
       kind: "all",
       message: message,
+      inspect: fn _, _ ->
+        "all([#{Enum.map_join(schematics, ", ", &inspect/1)}])"
+      end,
       unify:
         telemetry_wrap(:all, %{}, fn input, dir ->
           errors =
@@ -988,6 +1057,9 @@ defmodule Schematic do
     %Schematic{
       kind: "oneof",
       message: message,
+      inspect: fn _, _ ->
+        "oneof([#{Enum.map_join(schematics, ", ", &inspect/1)}])"
+      end,
       unify:
         telemetry_wrap(:oneof, %{style: :sequential}, fn input, dir ->
           inquiry =
@@ -1009,6 +1081,9 @@ defmodule Schematic do
   def oneof(dispatch) when is_function(dispatch) do
     %Schematic{
       kind: "oneof:dispatch",
+      inspect: fn _, _ ->
+        "oneof(fn)"
+      end,
       unify:
         telemetry_wrap(:oneof, %{style: :dispatch}, fn input, dir ->
           with %Schematic{} = schematic <- dispatch.(input) do

@@ -790,4 +790,60 @@ defmodule SchematicTest do
                })
     end
   end
+
+  describe "inspect" do
+    test "works" do
+      schematic =
+        map(%{
+          "foo" => oneof([str(), int()]),
+          optional({:alice, "ALICE"}, "some default") =>
+            tuple([
+              all([
+                raw(
+                  fn
+                    n, :to -> is_list(n) and length(n) == 3
+                    n, :from -> is_tuple(n) and tuple_size(n) == 3
+                  end,
+                  message: "must be a tuple of size 3",
+                  transform: fn
+                    input, :to ->
+                      List.to_tuple(input)
+
+                    input, :from ->
+                      Tuple.to_list(input)
+                  end
+                )
+              ])
+            ]),
+          "bar" =>
+            map(%{
+              "alice" => "Alice",
+              "bob" => list(str()),
+              "carol" =>
+                map(%{
+                  "baz" =>
+                    oneof([
+                      map(%{"one" => int()}),
+                      map(%{"two" => str()})
+                    ])
+                })
+            })
+        })
+
+      assert """
+              map(%{
+                optional({:alice, "ALICE"}, "some default") => tuple([all([raw("fn")])]),
+                "bar" =>
+                  map(%{
+                    "alice" => "Alice",
+                    "bob" => list(str()),
+                    "carol" => map(%{"baz" => oneof([map(%{"one" => int()}), map(%{"two" => str()})])})
+                  }),
+                "foo" => oneof([str(), int()])
+              })
+             """
+             |> Code.format_string!()
+             |> IO.iodata_to_binary() == inspect(schematic)
+    end
+  end
 end
