@@ -909,5 +909,15 @@ defmodule SchematicTest do
              |> Code.format_string!()
              |> IO.iodata_to_binary() == inspect(schematic)
     end
+
+    test "map with keys and values" do
+      schematic = map(keys: str(), values: str())
+
+      assert """
+             map(keys: str(), values: str())
+             """
+             |> Code.format_string!()
+             |> IO.iodata_to_binary() == Inspect.Schematic.inspect(schematic, [])
+    end
   end
 end
