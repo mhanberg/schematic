@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.5.1](https://github.com/mhanberg/schematic/compare/v0.5.0...v0.5.1) (2025-03-29)
+
+
+### Bug Fixes
+
+* **inspect:** maps with keys/values options ([#42](https://github.com/mhanberg/schematic/issues/42)) ([718eccb](https://github.com/mhanberg/schematic/commit/718eccbc1795f4eb450d12733bbded43e9a64279))
+
 ## [0.5.0](https://github.com/mhanberg/schematic/compare/v0.4.0...v0.5.0) (2025-03-26)
 
 
