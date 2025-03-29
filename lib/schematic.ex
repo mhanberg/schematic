@@ -1007,12 +1007,12 @@ defmodule Schematic do
           Enum.flat_map(
             [
               if opts[:keys] do
-                "keys: #{opts[:keys]}"
+                ["keys: #{inspect(opts[:keys])}"]
               else
                 []
               end,
               if opts[:values] do
-                "values: #{opts[:values]}"
+                ["values: #{inspect(opts[:values])}"]
               else
                 []
               end
