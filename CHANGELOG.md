@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.5.2](https://github.com/mhanberg/schematic/compare/v0.5.1...v0.5.2) (2026-02-04)
+
+
+### Bug Fixes
+
+* :to & :from typespecs ([#45](https://github.com/mhanberg/schematic/issues/45)) ([370f797](https://github.com/mhanberg/schematic/commit/370f797206c2f53000dc9533ba8f17ae2a6e7847))
+
 ## [0.5.1](https://github.com/mhanberg/schematic/compare/v0.5.0...v0.5.1) (2025-03-29)
 
 
