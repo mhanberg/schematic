@@ -14,7 +14,7 @@ defmodule Schematic do
   This data structure is meant to be opaque to the user, but you can create your own for super niche use cases. But backwards compatiblility of this data structure is not guaranteed.
   """
   @type t :: %__MODULE__{
-          unify: (term(), :up | :down -> {:ok, term()} | {:error, String.t() | [String.t()]}),
+          unify: (term(), :to | :from -> {:ok, term()} | {:error, String.t() | [String.t()]}),
           kind: String.t(),
           message: function() | nil
         }
@@ -1202,7 +1202,7 @@ defmodule Schematic do
   iex> {:ok, ["one", "two", 3]} = dump(schematic, {"one", "two", 3})
   ```
   """
-  @spec raw((any() -> boolean()) | (any(), :up | :down -> boolean()), [tuple()]) :: t()
+  @spec raw((any() -> boolean()) | (any(), :to | :from -> boolean()), [tuple()]) :: t()
   def raw(function, opts \\ []) do
     message = fn -> Keyword.get(opts, :message, "is invalid") end
     transformer = Keyword.get(opts, :transform, fn input, _dir -> input end)
