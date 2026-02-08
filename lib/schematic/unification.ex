@@ -12,7 +12,11 @@ defimpl Schematic.Unification, for: Schematic do
   end
 
   def message(schematic) do
-    schematic.message.()
+    if is_function(schematic.message) do
+      schematic.message.()
+    else
+      schematic.message
+    end
   end
 
   def kind(%{kind: kind}), do: kind

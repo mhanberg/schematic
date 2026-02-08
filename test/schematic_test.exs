@@ -514,6 +514,13 @@ defmodule SchematicTest do
       assert {:error, %{type: "is missing"}} == unify(schematic, %{name: "bob"})
     end
 
+    test "nullable with raw" do
+      schematic = nullable(raw(fn i -> i < 0 end, message: fn -> "must be <0" end))
+      assert {:ok, nil} = unify(schematic, nil)
+      assert {:ok, -1} = unify(schematic, -1)
+      assert {:error, "expected either null or must be <0"} = unify(schematic, 0)
+    end
+
     test "optional keys" do
       schematic =
         map(%{
@@ -918,6 +925,31 @@ defmodule SchematicTest do
              """
              |> Code.format_string!()
              |> IO.iodata_to_binary() == Inspect.Schematic.inspect(schematic, [])
+    end
+
+    test "schema" do
+      schematic =
+        schema(S1, %{
+          foo: int(),
+          bar: int()
+        })
+
+      assert """
+             schema(#{S1}, %{
+               :foo => int(),
+               :bar => int()
+             })
+             """ == inspect(schematic) <> "\n"
+    end
+
+    test "schema with field transformation" do
+      schematic = schema(S1, %{{:foo, "FOO"} => int()})
+
+      assert """
+             schema(#{S1}, %{
+               {:foo, "FOO"} => int()
+             })
+             """ == inspect(schematic) <> "\n"
     end
   end
 end
